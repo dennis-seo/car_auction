@@ -9,4 +9,237 @@ body {
     justify-content: center;
 }
 
-/* 여기에 기존의 모든 CSS 코드를 넣습니다 */
+/* 컨테이너 스타일 */
+.container {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    width: auto;
+    max-width: 95%;
+}
+
+/* 제목 스타일 */
+h1 {
+    color: #343a40;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+/* --- 파일 드롭존 스타일 시작 --- */
+.file-drop-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    background-color: #f1f7ff;
+    color: #007bff;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    margin-bottom: 2rem;
+    box-sizing: border-box;
+}
+.file-drop-area.dragover {
+    background-color: #e6f2ff;
+    border-color: #0056b3;
+}
+.file-drop-area input[type="file"] {
+    display: none;
+}
+.file-drop-area .file-msg {
+    font-size: 1.1rem;
+}
+.file-drop-area .file-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+/* --- 파일 드롭존 스타일 끝 --- */
+
+/* 테이블 래퍼 스타일 */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+/* 테이블 스타일 */
+table {
+    border-collapse: collapse;
+    margin-top: 20px;
+    width: 100%;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    background-color: #fff;
+    font-size: 0.9rem;
+}
+
+th, td {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* 테이블 헤더 스타일 */
+thead {
+    background-color: #495057;
+    color: white;
+}
+
+/* --- 헤더 필터 스타일 시작 --- */
+.filterable-header {
+    position: relative;
+    cursor: pointer;
+}
+.filterable-header .arrow {
+    font-size: 0.7em;
+    opacity: 0.7;
+}
+.filter-popup {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    z-index: 100;
+    display: none;
+    min-width: 150px;
+    padding: 0.5rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.filter-option {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    color: #333;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.filter-option:hover {
+    background-color: #f1f3f5;
+}
+.active-filter-value {
+    color: #a5d8ff;
+    font-size: 0.9em;
+    font-weight: normal;
+}
+/* --- 헤더 필터 스타일 끝 --- */
+
+/* 테이블 바디 행 스타일 */
+tbody tr:nth-of-type(even) {
+    background-color: #f8f9fa;
+}
+
+tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+/* 클릭 가능한 차종 스타일 */
+.title-clickable {
+    cursor: pointer;
+    color: #007bff;
+    font-weight: 600;
+    text-decoration: underline;
+}
+.title-clickable:hover {
+    color: #0056b3;
+}
+
+/* 특정 열 너비 및 정렬 조정 */
+.km-column, .price-column {
+    width: 1%;
+    white-space: nowrap;
+}
+.title-column {
+    max-width: 350px; 
+    white-space: normal; 
+    text-align: center;
+}
+.fuel-column {
+    width: 70px;
+}
+
+.details-cell {
+    padding: 0;
+    vertical-align: top;
+}
+.details-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: 100%;
+}
+.details-grid > div {
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.detail-item-label {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    padding: 6px 8px;
+    line-height: 1.2;
+}
+.details-grid > .detail-item-label:nth-child(1),
+.details-grid > .detail-item-value:nth-child(2) {
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* 이미지 모달 스타일 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+.modal-content {
+    max-width: 85vw;
+    max-height: 85vh;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    animation: zoomIn 0.3s ease;
+}
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.modal-close:hover {
+    color: #ccc;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes zoomIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+
+/* 로딩/안내 메시지 스타일 */
+#message {
+    text-align: center;
+    color: #6c757d;
+    padding: 2rem;
+    display: none; /* 기본적으로 숨김 */
+}
