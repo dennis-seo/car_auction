@@ -40,8 +40,8 @@ export const appState = {
  */
 export async function fetchAvailableDates() {
     // 깃허브 사용자 이름과 저장소 이름을 여기에 입력하세요.
-    const owner = "dennis-seo"; // 님의 GitHub 사용자 이름
-    const repo = "car_auction";  // 님의 저장소 이름
+    const owner = "dennis-seo";
+    const repo = "car_auction";
 
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/sources`;
 
@@ -71,8 +71,9 @@ export async function fetchAvailableDates() {
 
 // --- 데이터 처리 함수 ---
 export function initializeFiltersAndOptions() {
+    // 각 필터를 다중값 배열로 초기화(전체 상태는 빈 배열)
     appState.activeFilters = {
-        title: 'all', price: 'all', km: 'all', fuel: 'all'
+        title: [], price: [], km: [], fuel: []
     };
     appState.fuelTypes = [...new Set(appState.allData.map(row => row.fuel).filter(Boolean))].sort();
     appState.carBrands = [...new Set(appState.allData.map(row => {

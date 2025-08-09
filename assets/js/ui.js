@@ -16,7 +16,8 @@ const DOM = {
     messageEl: document.getElementById('message'),
     imageModal: document.getElementById('image-modal'),
     modalImage: document.getElementById('modal-image'),
-    modalClose: document.querySelector('.modal-close')
+    modalClose: document.querySelector('.modal-close'),
+    activeFiltersBar: document.getElementById('active-filters')
 };
 
 /**
@@ -47,7 +48,18 @@ async function initialize() {
         if (e.target === DOM.imageModal) hideImageModal();
     };
     
-    window.addEventListener('click', closeAllPopups);
+    window.addEventListener('click', (e) => {
+        const isPopup = e.target.closest('.filter-popup');
+        const isHeader = e.target.closest('.filterable-header');
+        if (isPopup || isHeader) return;
+        document.querySelectorAll('.filter-popup.active').forEach(popup => {
+            popup.classList.remove('active');
+            popup.addEventListener('transitionend', function onEnd() {
+                popup.removeEventListener('transitionend', onEnd);
+                if (popup.parentNode) popup.parentNode.removeChild(popup);
+            });
+        });
+    });
 }
 
 /**
@@ -115,7 +127,6 @@ function buildAndAttachHeader() {
         const th = document.createElement('th');
         th.dataset.filterKey = key;
         th.innerHTML = columnMapping[key];
-
         if (['fuel', 'title', 'km', 'price'].includes(key)) {
             th.classList.add('filterable-header');
             th.innerHTML += ' <span class="arrow">▼</span>';
@@ -126,7 +137,7 @@ function buildAndAttachHeader() {
                 if (key === 'title') { options = appState.carBrands; filterType = 'title'; }
                 if (key === 'km') { options = Object.keys(mileageRanges); filterType = 'km'; }
                 if (key === 'price') { options = Object.keys(priceRanges); filterType = 'price'; }
-                toggleFilterPopup(th, options, filterType);
+                toggleFilterPopup_multi(th, options, filterType);
             });
         }
         DOM.tableHead.appendChild(th);
@@ -137,39 +148,62 @@ function buildAndAttachHeader() {
  * 현재 활성화된 필터를 적용하고 결과를 렌더링합니다.
  */
 function render() {
-    const filteredData = appState.allData.filter(row => {
-        const brandMatch = appState.activeFilters.title === 'all' || (row.title && row.title.includes(`[${appState.activeFilters.title}]`));
-        const fuelMatch = appState.activeFilters.fuel === 'all' || row.fuel === appState.activeFilters.fuel;
-
+    let filteredData = appState.allData.filter(row => {
+        // 차종
+        const titleArr = appState.activeFilters.title || [];
+        const brandMatch = titleArr.length === 0
+            || (row.title && titleArr.some(val => row.title.includes(`[${val}]`)));
+        // 연료
+        const fuelArr = appState.activeFilters.fuel || [];
+        const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
+        // 주행거리
+        let kmArr = appState.activeFilters.km || [];
         let kmMatch = true;
-        if (appState.activeFilters.km !== 'all') {
-            const range = mileageRanges[appState.activeFilters.km].split('-');
-            const min = parseInt(range[0], 10);
-            const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
-            const km = parseInt(row.km, 10);
-            kmMatch = isNaN(km) ? false : (km >= min && km < max);
+        if (kmArr.length > 0) {
+            const kmValue = parseInt(row.km, 10); // 필드 값
+            // 배열 내 하나라도 일치하면 true
+            kmMatch = kmArr.some(rangeKey => {
+                const range = mileageRanges[rangeKey].split('-');
+                const min = parseInt(range[0], 10);
+                const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
+                return !isNaN(kmValue) && kmValue >= min && kmValue < max;
+            });
         }
-
+        // 가격
+        let priceArr = appState.activeFilters.price || [];
         let priceMatch = true;
-        if (appState.activeFilters.price !== 'all') {
-            const range = priceRanges[appState.activeFilters.price].split('-');
-            const min = parseInt(range[0], 10);
-            const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
-            const price = parseInt(row.price, 10);
-            priceMatch = isNaN(price) ? false : (max === Infinity ? price >= min : (price >= min && price < max));
+        if (priceArr.length > 0) {
+            const priceValue = parseInt(row.price, 10);
+            priceMatch = priceArr.some(rangeKey => {
+                const range = priceRanges[rangeKey].split('-');
+                const min = parseInt(range[0], 10);
+                const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
+                return !isNaN(priceValue) && (max === Infinity ? priceValue >= min : (priceValue >= min && priceValue < max));
+            });
         }
-
         return brandMatch && fuelMatch && kmMatch && priceMatch;
     });
-
-    updateHeaderAppearance();
-    
+    // 정렬 로직 (마지막 필터 기준)
+    const priceArr = appState.activeFilters.price || [];
+    const kmArr = appState.activeFilters.km || [];
+    if (priceArr.length > 0 && kmArr.length > 0 && appState.lastSortedFilter) {
+        filteredData = filteredData.slice();
+        if (appState.lastSortedFilter === 'price') {
+            filteredData.sort((a, b) => (parseInt(a.price, 10) || 0) - (parseInt(b.price, 10) || 0));
+        } else if (appState.lastSortedFilter === 'km') {
+            filteredData.sort((a, b) => (parseInt(a.km, 10) || 0) - (parseInt(b.km, 10) || 0));
+        }
+    } else if (priceArr.length > 0) {
+        filteredData = filteredData.slice().sort((a, b) => (parseInt(a.price, 10) || 0) - (parseInt(b.price, 10) || 0));
+    } else if (kmArr.length > 0) {
+        filteredData = filteredData.slice().sort((a, b) => (parseInt(a.km, 10) || 0) - (parseInt(b.km, 10) || 0));
+    }
+    renderActiveFilterPills_multi();
     if (filteredData.length === 0) {
         DOM.tableBody.innerHTML = `<tr><td colspan="${Object.keys(columnMapping).length}" style="padding: 2rem; text-align: center;">검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.</td></tr>`;
     } else {
         displayTableBody(filteredData);
     }
-
     DOM.carTable.style.display = 'table';
 }
 
@@ -201,56 +235,136 @@ function displayTableBody(data) {
 }
 
 /**
- * 필터 팝업을 토글합니다.
+ * 다중 선택 팝업 토글
  */
-function toggleFilterPopup(thElement, options, filterType) {
-    closeAllPopups();
+function toggleFilterPopup_multi(thElement, options, filterType) {
     const existingPopup = thElement.querySelector('.filter-popup');
     if (existingPopup) {
-        existingPopup.remove();
+        // 같은 th에 pop이 열려 있다면 트랜지션 닫기
+        existingPopup.classList.remove('active');
+        existingPopup.addEventListener('transitionend', function onEnd() {
+            existingPopup.removeEventListener('transitionend', onEnd);
+            if (existingPopup.parentNode) existingPopup.parentNode.removeChild(existingPopup);
+        });
         return;
     }
+    // 다른 팝업은 즉시 제거한다.
+    closeAllPopups();
 
     const popup = document.createElement('div');
     popup.className = 'filter-popup';
-    
+    // 전체 옵션
     const allOption = document.createElement('a');
     allOption.className = 'filter-option';
     allOption.textContent = '전체';
-    allOption.onclick = () => updateAndApplyFilters(filterType, 'all');
+    allOption.onclick = () => {
+        updateAndApplyFilters_multi(filterType, 'all');
+    };
     popup.appendChild(allOption);
-
+    // 이하 직접 값들(체크/선택 표시)
     options.forEach(optionValue => {
         const option = document.createElement('a');
         option.className = 'filter-option';
         option.textContent = optionValue;
-        option.onclick = () => updateAndApplyFilters(filterType, optionValue);
+        // 선택표시:
+        if ((appState.activeFilters[filterType] || []).includes(optionValue)) {
+            option.style.fontWeight = 'bold';
+            option.style.background = '#e7f5ff';
+        }
+        option.onclick = () => {
+            updateAndApplyFilters_multi(filterType, optionValue);
+        };
         popup.appendChild(option);
     });
-
     thElement.appendChild(popup);
-    popup.style.display = 'block';
+    // filter-popup이 보여질 때 .active를 추가하여 트랜지션 적용
+    setTimeout(() => popup.classList.add('active'), 10);
 }
 
-function updateAndApplyFilters(filterType, value) {
-    appState.activeFilters[filterType] = value;
+/**
+ * 다중 선택 필터 업데이트 함수
+ */
+function updateAndApplyFilters_multi(filterType, value) {
+    let selectedArr = appState.activeFilters[filterType];
+    if (value === 'all') {
+        appState.activeFilters[filterType] = [];
+        if (["price", "km"].includes(filterType)) {
+            // 전체 해제 시 정렬도 없앰
+            const other = filterType === 'price' ? 'km' : 'price';
+            if ((appState.activeFilters[other]||[]).length > 0) appState.lastSortedFilter = other;
+            else appState.lastSortedFilter = null;
+        }
+    } else {
+        if (!selectedArr) selectedArr = [];
+        // toggle: 있으면 제거, 없으면 추가
+        if (selectedArr.includes(value)) {
+            selectedArr = selectedArr.filter(v => v !== value);
+        } else {
+            selectedArr = [...selectedArr, value];
+        }
+        appState.activeFilters[filterType] = selectedArr;
+        if (["price", "km"].includes(filterType)) {
+            if (selectedArr.length > 0) appState.lastSortedFilter = filterType;
+        }
+        // 전체 상태면 null로
+        if (["price","km"].includes(filterType) && selectedArr.length === 0) {
+            const other = filterType === 'price' ? 'km' : 'price';
+            if ((appState.activeFilters[other]||[]).length > 0) appState.lastSortedFilter = other;
+            else appState.lastSortedFilter = null;
+        }
+    }
     render();
     closeAllPopups();
 }
 
-function updateHeaderAppearance() {
-    document.querySelectorAll('th.filterable-header').forEach(th => {
-        const key = th.dataset.filterKey;
-        const originalText = columnMapping[key];
-        const selectedValue = appState.activeFilters[key];
+const FILTER_LABELS = {
+    title: '차종',
+    fuel: '연료',
+    km: '주행거리',
+    price: '가격'
+};
 
-        if (selectedValue && selectedValue !== 'all') {
-            th.innerHTML = `${originalText} <span class="active-filter-value">(${selectedValue})</span> <span class="arrow">▼</span>`;
-        } else {
-            th.innerHTML = `${originalText} <span class="arrow">▼</span>`;
-        }
+// --- 필터 정렬 기록 변수 추가 ---
+if (!('lastSortedFilter' in appState)) appState.lastSortedFilter = null;
+
+/**
+ * 각 값별 al-pill 표시 및 X로 삭제 기능 추가
+ */
+function renderActiveFilterPills_multi() {
+    const bar = DOM.activeFiltersBar;
+    bar.innerHTML = '';
+    Object.keys(appState.activeFilters).forEach(key => {
+        const values = appState.activeFilters[key] || [];
+        values.forEach(val => {
+            const pill = document.createElement('span');
+            pill.className = 'filter-pill';
+            pill.innerHTML = `<span class="filter-pill-label">${FILTER_LABELS[key]}</span><span class="filter-pill-value">${val}</span>`;
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'filter-pill-remove';
+            closeBtn.type = 'button';
+            closeBtn.setAttribute('aria-label', '필터 제거');
+            closeBtn.innerHTML = '×';
+            closeBtn.onclick = () => {
+                // 한 값만 제거, 배열에서 삭제
+                appState.activeFilters[key] = (appState.activeFilters[key]||[]).filter(v => v !== val);
+                // 정렬 기준 업데이트
+                if (["price","km"].includes(key)) {
+                    if ((appState.activeFilters[key]||[]).length === 0) {
+                        // 해당 정렬기준 없앰
+                        const other = key === 'price' ? 'km':'price';
+                        if ((appState.activeFilters[other]||[]).length > 0) appState.lastSortedFilter = other;
+                        else appState.lastSortedFilter = null;
+                    } // else, 마지막 삭제가 이 필드였음을 유지
+                }
+                render();
+            };
+            pill.appendChild(closeBtn);
+            bar.appendChild(pill);
+        });
     });
 }
+
+function updateHeaderAppearance() {} // 더 이상 사용하지 않음
 
 function closeAllPopups() {
     document.querySelectorAll('.filter-popup').forEach(p => p.remove());
