@@ -3,7 +3,9 @@ import {
     columnMapping,
     mileageRanges,
     priceRanges,
-    initializeFiltersAndOptions
+    initializeFiltersAndOptions,
+    fetchAvailableDates,
+    loadCSVForDate
 } from './app.js';
 
 // --- UI 관련 DOM 요소 캐싱 ---
@@ -17,7 +19,8 @@ const DOM = {
     messageEl: document.getElementById('message'),
     imageModal: document.getElementById('image-modal'),
     modalImage: document.getElementById('modal-image'),
-    modalClose: document.querySelector('.modal-close')
+    modalClose: document.querySelector('.modal-close'),
+    dateSelect: document.getElementById('date-select')
 };
 
 /**
@@ -51,6 +54,12 @@ function initialize() {
     };
     
     window.addEventListener('click', closeAllPopups);
+
+    // 날짜 선택 이벤트 리스너 추가
+    DOM.dateSelect.addEventListener('change', handleDateSelect);
+    
+    // 날짜 선택 드롭다운 초기화
+    initializeDateSelector();
 }
 
 /**
@@ -265,6 +274,57 @@ function updateAuctionTitle() {
     
     if (uniqueAuctionNames.length > 0) {
         h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames[0]})`;
+    }
+}
+
+// 날짜 선택 드롭다운 초기화
+async function initializeDateSelector() {
+    const dates = await fetchAvailableDates();
+    
+    // 드롭다운 옵션 생성
+    dates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        // 날짜 형식 변환 (2025.08.09 -> 2025년 8월 9일)
+        const formattedDate = new Date(date.replace(/\./g, '-')).toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        option.textContent = formattedDate;
+        DOM.dateSelect.appendChild(option);
+    });
+}
+
+// 날짜 선택 이벤트 핸들러
+async function handleDateSelect(event) {
+    const selectedDate = event.target.value;
+    if (!selectedDate) return;
+
+    DOM.messageEl.textContent = '데이터를 로드하는 중입니다...';
+    DOM.messageEl.style.display = 'block';
+    DOM.carTable.style.display = 'none';
+
+    const csvText = await loadCSVForDate(selectedDate);
+    if (csvText) {
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                appState.allData = results.data;
+                initializeFiltersAndOptions();
+                buildAndAttachHeader();
+                updateAuctionTitle();
+                render();
+                
+                DOM.messageEl.style.display = 'none';
+                DOM.carTable.style.display = 'table';
+                DOM.fileDropContainer.style.display = 'none';
+            },
+            error: function(error) {
+                DOM.messageEl.textContent = '파일 읽기 오류: ' + error.message;
+            }
+        });
     }
 }
 

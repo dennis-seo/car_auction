@@ -46,3 +46,28 @@ export function initializeFiltersAndOptions() {
         return match ? match[1] : null;
     }).filter(Boolean))].sort();
 }
+
+// 날짜 관련 상수 및 함수
+export const SOURCES_PATH = '/Users/jeffrey.bbongs/web_test/sources/';
+
+export async function fetchAvailableDates() {
+    try {
+        const response = await fetch('/api/dates');  // 실제 API 엔드포인트로 수정 필요
+        const dates = await response.json();
+        return dates.sort((a, b) => b.localeCompare(a));  // 날짜 내림차순 정렬
+    } catch (error) {
+        console.error('날짜 목록을 가져오는데 실패했습니다:', error);
+        return [];
+    }
+}
+
+export async function loadCSVForDate(date) {
+    try {
+        const response = await fetch(`/sources/${date}/auction_data.csv`);
+        const csvText = await response.text();
+        return csvText;
+    } catch (error) {
+        console.error('CSV 파일을 로드하는데 실패했습니다:', error);
+        return null;
+    }
+}
