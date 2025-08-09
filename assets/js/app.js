@@ -1,5 +1,5 @@
-// 상수 및 상태 관리
-const columnMapping = {
+// --- 상수 및 상태 관리 ---
+export const columnMapping = {
     "sell_number": "출품번호", 
     "title": "차종", 
     "price": "가격<br>(만)", 
@@ -9,7 +9,7 @@ const columnMapping = {
     "details": "기타"
 };
 
-const mileageRanges = {
+export const mileageRanges = {
     "3만km 이하": "0-30000",
     "3만km ~ 5만km": "30000-50000",
     "5만km ~ 10만km": "50000-100000",
@@ -18,7 +18,7 @@ const mileageRanges = {
     "20만km 이상": "200000-Infinity"
 };
 
-const priceRanges = {
+export const priceRanges = {
     "500만원 이하": "0-500",
     "500 ~ 1,000만원": "500-1000",
     "1,000 ~ 2,000만원": "1000-2000",
@@ -27,7 +27,7 @@ const priceRanges = {
 };
 
 // 앱 상태
-const appState = {
+export const appState = {
     allData: [],
     fuelTypes: [],
     carBrands: [],
@@ -35,8 +35,8 @@ const appState = {
     activeFilters: {}
 };
 
-// 데이터 처리 함수들
-function initializeFiltersAndOptions() {
+// --- 데이터 처리 함수 ---
+export function initializeFiltersAndOptions() {
     appState.activeFilters = {
         title: 'all', price: 'all', km: 'all', fuel: 'all'
     };
@@ -45,34 +45,4 @@ function initializeFiltersAndOptions() {
         const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
         return match ? match[1] : null;
     }).filter(Boolean))].sort();
-}
-
-function handleFileSelect(files) {
-    if (files.length === 0 || appState.isParsing) return;
-    appState.isParsing = true;
-
-    const file = files[0];
-    if (file && file.type === 'text/csv') {
-        UI.showMessage('파일을 읽는 중입니다...');
-        
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                appState.allData = results.data;
-                initializeFiltersAndOptions();
-                UI.buildAndAttachHeader();
-                UI.render();
-                UI.hideFileDropContainer();
-                appState.isParsing = false;
-            },
-            error: function(error) {
-                UI.showMessage('파일 읽기 오류: ' + error.message);
-                appState.isParsing = false;
-            }
-        });
-    } else {
-        alert('CSV 파일만 업로드할 수 있습니다.');
-        appState.isParsing = false;
-    }
 }
