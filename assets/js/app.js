@@ -32,7 +32,9 @@ export const appState = {
     fuelTypes: [],
     carBrands: [],
     availableDates: [], // 사용 가능한 날짜(폴더명) 목록
-    activeFilters: {}
+    activeFilters: {},
+    yearMin: null,
+    yearMax: null
 };
 
 /**
@@ -73,11 +75,15 @@ export async function fetchAvailableDates() {
 export function initializeFiltersAndOptions() {
     // 각 필터를 다중값 배열로 초기화(전체 상태는 빈 배열)
     appState.activeFilters = {
-        title: [], price: [], km: [], fuel: []
+        title: [], price: [], km: [], fuel: [], year: []
     };
     appState.fuelTypes = [...new Set(appState.allData.map(row => row.fuel).filter(Boolean))].sort();
     appState.carBrands = [...new Set(appState.allData.map(row => {
         const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
         return match ? match[1] : null;
     }).filter(Boolean))].sort();
+    // year 필드에서 min/max 구하기
+    const years = appState.allData.map(row => parseInt(row.year, 10)).filter(v => !isNaN(v));
+    appState.yearMin = years.length > 0 ? Math.min(...years) : 2000;
+    appState.yearMax = years.length > 0 ? Math.max(...years) : 2026;
 }

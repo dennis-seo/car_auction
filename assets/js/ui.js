@@ -17,6 +17,9 @@ const DOM = {
     imageModal: document.getElementById('image-modal'),
     modalImage: document.getElementById('modal-image'),
     modalClose: document.querySelector('.modal-close'),
+    detailsModal: document.getElementById('details-modal'),
+    detailsModalContent: document.getElementById('details-modal-content'),
+    detailsModalClose: document.querySelector('.details-close'),
     activeFiltersBar: document.getElementById('active-filters')
 };
 
@@ -46,6 +49,28 @@ async function initialize() {
     DOM.modalClose.onclick = hideImageModal;
     DOM.imageModal.onclick = (e) => {
         if (e.target === DOM.imageModal) hideImageModal();
+    };
+
+    DOM.tableBody.addEventListener('click', (e) => {
+        const clickableTitle = e.target.closest('.title-clickable');
+        const clickableSellNumber = e.target.closest('.sell-number-clickable');
+
+        if (clickableTitle) {
+            const imageUrl = clickableTitle.dataset.imageUrl;
+            if (imageUrl) showImageModal(imageUrl);
+            else alert('표시할 이미지가 없습니다.');
+        }
+        else if (clickableSellNumber) {
+            const sellNumber = clickableSellNumber.dataset.sellNumber;
+            const rowData = appState.allData.find(row => row.sell_number === sellNumber);
+            if (rowData) showDetailsModal(rowData);
+            else alert('해당 출품번호의 정보를 찾을 수 없습니다.');
+        }
+    });
+
+    DOM.detailsModalClose.onclick = hideDetailsModal;
+    DOM.detailsModal.onclick = (e) => {
+        if (e.target === DOM.detailsModal) hideDetailsModal();
     };
     
     window.addEventListener('click', (e) => {
@@ -127,7 +152,7 @@ function buildAndAttachHeader() {
         const th = document.createElement('th');
         th.dataset.filterKey = key;
         th.innerHTML = columnMapping[key];
-        if (['fuel', 'title', 'km', 'price'].includes(key)) {
+        if (["fuel", "title", "km", "price"].includes(key)) {
             th.classList.add('filterable-header');
             th.innerHTML += ' <span class="arrow">▼</span>';
             th.addEventListener('click', (e) => {
@@ -139,6 +164,13 @@ function buildAndAttachHeader() {
                 if (key === 'price') { options = Object.keys(priceRanges); filterType = 'price'; }
                 toggleFilterPopup_multi(th, options, filterType);
             });
+        } else if (key === 'year') {
+            th.classList.add('filterable-header');
+            th.innerHTML += ' <span class="arrow">▼</span>';
+            th.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleYearSliderPopup(th);
+            });
         }
         DOM.tableHead.appendChild(th);
     });
@@ -149,6 +181,14 @@ function buildAndAttachHeader() {
  */
 function render() {
     let filteredData = appState.allData.filter(row => {
+        // ... 기존 필터링 ...
+        // year 필터
+        if (Array.isArray(appState.activeFilters.year) && appState.activeFilters.year.length === 2) {
+            const year = parseInt(row.year, 10);
+            const [minYear, maxYear] = appState.activeFilters.year;
+            if(isNaN(year) || year < minYear || year > maxYear) return false;
+        }
+        // ... 나머지 조건 ...
         // 차종
         const titleArr = appState.activeFilters.title || [];
         const brandMatch = titleArr.length === 0
@@ -216,6 +256,10 @@ function displayTableBody(data) {
             let content = row[key] || '-';
             const className = ['fuel-column', 'price-column', 'km-column', 'title-column'].find(c => c.startsWith(key)) || '';
 
+
+            if (key === 'sell_number') {
+                return `<td class="${className} sell-number-clickable" data-sell-number="${content}">${content}</td>`;
+            }
             if (key === 'details') {
                 return `<td class="details-cell"><div class="details-grid">
                     <div class="detail-item-label">차량<br>번호</div><div class="detail-item-value">${row.car_number || '-'}</div>
@@ -334,6 +378,27 @@ function renderActiveFilterPills_multi() {
     const bar = DOM.activeFiltersBar;
     bar.innerHTML = '';
     Object.keys(appState.activeFilters).forEach(key => {
+        if(key === 'year') {
+            const v = appState.activeFilters.year;
+            if(Array.isArray(v) && v.length === 2) {
+                const pill = document.createElement('span');
+                pill.className = 'filter-pill';
+                pill.innerHTML = `<span class="filter-pill-label">연식</span><span class="filter-pill-value">${v[0]} ~ ${v[1]}</span>`;
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'filter-pill-remove';
+                closeBtn.type = 'button';
+                closeBtn.setAttribute('aria-label', '필터 제거');
+                closeBtn.innerHTML = '×';
+                closeBtn.onclick = () => {
+                    appState.activeFilters.year = [];
+                    render();
+                }
+                pill.appendChild(closeBtn);
+                bar.appendChild(pill);
+            }
+            return;
+        }
+        // ... 나머지는 기존대로 ...
         const values = appState.activeFilters[key] || [];
         values.forEach(val => {
             const pill = document.createElement('span');
@@ -364,6 +429,74 @@ function renderActiveFilterPills_multi() {
     });
 }
 
+function toggleYearSliderPopup(thElement) {
+    const existingPopup = thElement.querySelector('.filter-popup');
+    if (existingPopup) {
+        existingPopup.classList.remove('active');
+        existingPopup.addEventListener('transitionend', function onEnd() {
+            existingPopup.removeEventListener('transitionend', onEnd);
+            if (existingPopup.parentNode) existingPopup.parentNode.removeChild(existingPopup);
+        });
+        return;
+    }
+    closeAllPopups();
+    const popup = document.createElement('div');
+    popup.className = 'filter-popup';
+    const min = appState.yearMin;
+    const max = appState.yearMax;
+    let curMin = min, curMax = max;
+    if (Array.isArray(appState.activeFilters.year) && appState.activeFilters.year.length === 2) {
+        curMin = appState.activeFilters.year[0];
+        curMax = appState.activeFilters.year[1];
+    }
+    console.log('[연식 슬라이더 생성]', 'min:', min, 'max:', max, 'curMin:', curMin, 'curMax:', curMax);
+    if (isNaN(min) || isNaN(max) || isNaN(curMin) || isNaN(curMax)) {
+        console.warn('[경고] 연식 슬라이더 값이 비정상(min, max, from, to). 데이터를 확인하세요');
+    }
+    popup.innerHTML = `
+        <div style='padding: 14px 18px 15px 18px; min-width:230px;'>
+            <div style='margin-bottom:12px;font-weight:500;'>연식 범위: <span id='year-range-display'>${curMin} ~ ${curMax}</span></div>
+            <input id='year-ion-slider' type='text' />
+            <button id='year-reset' style='margin-top:16px; width:100%; border-radius:10px; border:1px solid #ccc; background:#f4f6fa; font-weight:500; cursor:pointer;'>전체</button>
+        </div>
+    `;
+    thElement.appendChild(popup);
+    setTimeout(() => popup.classList.add('active'), 10);
+    // ionRangeSlider 초기화(jQuery 기반)
+    $(function() {
+        $('#year-ion-slider').ionRangeSlider({
+            type: 'double',
+            min: min,
+            max: max,
+            from: curMin,
+            to: curMax,
+            grid: true,
+            prettify: function(num) { return num + '년'; },
+            onStart: function(data) {
+                popup.querySelector('#year-range-display').textContent = `${data.from} ~ ${data.to}`;
+            },
+            onChange: function(data) {
+                popup.querySelector('#year-range-display').textContent = `${data.from} ~ ${data.to}`;
+                // 전체 구간이면 전체(빈 배열), 아니면 min~max
+                if (data.from == min && data.to == max) {
+                    appState.activeFilters.year = [];
+                } else {
+                    appState.activeFilters.year = [data.from, data.to];
+                }
+                render();
+            }
+        });
+    });
+    // 전체(리셋) 버튼
+    popup.querySelector('#year-reset').onclick = () => {
+        const slider = $('#year-ion-slider').data('ionRangeSlider');
+        slider.update({ from: min, to: max });
+        popup.querySelector('#year-range-display').textContent = `${min} ~ ${max}`;
+        appState.activeFilters.year = [];
+        render();
+    };
+}
+
 function updateHeaderAppearance() {} // 더 이상 사용하지 않음
 
 function closeAllPopups() {
@@ -389,11 +522,32 @@ function updateAuctionTitle(date) {
     if (uniqueAuctionNames.length > 0) {
         h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames[0]})`;
     }
-    // if (date) {
-    //     h1Element.textContent = `차량 경매 정보 (${date})`;
-    // } else {
-    //     h1Element.textContent = `차량 경매 정보`;
-    // }
+}
+
+/** 상세 정보 모달을 보여주는 함수 */
+function showDetailsModal(data) {
+    const { sell_number, title, year, km, color, fuel, car_number, price, auction_name, score } = data;
+    const infoString = [year, km ? `${parseInt(km, 10).toLocaleString('ko-KR')}km` : null, color, fuel, car_number].filter(Boolean).join(' | ');
+
+    DOM.detailsModalContent.innerHTML = `
+        <div class="details-modal-header">
+            <span class="details-modal-sell-number">출품번호 ${sell_number}</span>
+            <h2 class="details-modal-title">${title || '-'}</h2>
+            <p class="details-modal-info">${infoString}</p>
+        </div>
+        <div class="details-modal-body">
+            <p class="details-modal-price">시작가 ${price ? parseInt(price, 10).toLocaleString('ko-KR') : '-'} 만원</p>
+            <p>경매장: ${auction_name || '-'}</p>
+            <p>평가점수: ${score || '-'}</p>
+        </div>
+    `;
+
+    DOM.detailsModal.style.display = 'flex';
+}
+
+/** 상세 정보 모달을 숨기는 함수 */
+function hideDetailsModal() {
+    DOM.detailsModal.style.display = 'none';
 }
 
 // --- 앱 실행 ---

@@ -195,6 +195,57 @@ tbody tr:hover {
     border-bottom: 1px solid #dee2e6;
 }
 
+/* 상세 정보 모달 스타일 */
+.details-modal-container {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    animation: zoomIn 0.3s ease;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+.details-modal-content {
+    width: 100%;
+}
+.details-modal-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+.details-modal-sell-number {
+    display: inline-block;
+    background: #e7f5ff;
+    color: #1976d2;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+.details-modal-title {
+    margin: 10px 0;
+    font-size: 1.5rem;
+}
+.details-modal-info {
+    color: #666;
+    margin-bottom: 10px;
+}
+.details-modal-price {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #d32f2f;
+}
+.sell-number-clickable {
+    cursor: pointer;
+    color: #007bff;
+    font-weight: 600;
+    text-decoration: underline;
+}
+.sell-number-clickable:hover {
+    color: #0056b3;
+}
+
 /* 이미지 모달 스타일 */
 .modal-overlay {
     position: fixed;
@@ -308,3 +359,40 @@ tbody tr:hover {
     font-size: 1rem;
     cursor: pointer;
 }
+/*
+
+*/
+/* ionRangeSlider 트랙 색상 변경 *//*
+
+.irs-bar,
+.irs-bar-edge {
+    background: #1976d2 !important;
+}
+
+*/
+/* 슬라이더 핸들(버튼) 색상 및 그림자 *//*
+
+.irs-handle {
+    background: #90caf9 !important;
+    border: 2px solid #1976d2 !important;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+}
+
+*/
+/* 슬라이더 값 표시 폰트 및 배경 *//*
+
+.irs-from, .irs-to, .irs-single {
+    background: #e3f2fd !important;
+    color: #1976d2 !important;
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+*/
+/* 슬라이더 전체 영역 여백 및 폰트 *//*
+
+.irs {
+    font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 1.05em;
+    padding: 8px 0;
+}*/
