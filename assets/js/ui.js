@@ -4,47 +4,41 @@ import {
     mileageRanges,
     priceRanges,
     initializeFiltersAndOptions,
-    fetchAvailableDates,
-    loadCSVForDate
+    fetchAvailableDates
 } from './app.js';
 
 // --- UI 관련 DOM 요소 캐싱 ---
 const DOM = {
-    fileDropContainer: document.getElementById('file-drop-container'),
-    fileDropArea: document.querySelector('.file-drop-area'),
-    fileInput: document.getElementById('csv-file'),
+    dateSelector: document.getElementById('date-selector'),
     carTable: document.getElementById('car-table'),
     tableHead: document.querySelector('#car-table thead tr'),
     tableBody: document.querySelector('#car-table tbody'),
     messageEl: document.getElementById('message'),
     imageModal: document.getElementById('image-modal'),
     modalImage: document.getElementById('modal-image'),
-    modalClose: document.querySelector('.modal-close'),
-    dateSelect: document.getElementById('date-select')
+    modalClose: document.querySelector('.modal-close')
 };
 
 /**
- * 앱 초기화: 모든 이벤트 리스너를 설정합니다.
+ * 앱 초기화: 날짜 목록을 불러와 드롭다운을 설정하고 이벤트 리스너를 연결합니다.
  */
-function initialize() {
-    DOM.fileInput.addEventListener('change', () => handleFileSelect(DOM.fileInput.files));
-    DOM.fileDropArea.addEventListener('dragover', (e) => { e.preventDefault(); DOM.fileDropArea.classList.add('dragover'); });
-    DOM.fileDropArea.addEventListener('dragleave', () => DOM.fileDropArea.classList.remove('dragover'));
-    DOM.fileDropArea.addEventListener('drop', (e) => { 
-        e.preventDefault(); 
-        DOM.fileDropArea.classList.remove('dragover'); 
-        handleFileSelect(e.dataTransfer.files); 
-    });
-
+async function initialize() {
+    try {
+        await fetchAvailableDates();
+        populateDateSelector();
+    } catch (error) {
+        DOM.messageEl.textContent = '경매 날짜 목록을 불러오는 데 실패했습니다.';
+        console.error(error);
+    }
+    
+    DOM.dateSelector.addEventListener('change', (e) => loadDataForDate(e.target.value));
+    
     DOM.tableBody.addEventListener('click', (e) => {
         const clickableTitle = e.target.closest('.title-clickable');
         if (clickableTitle) {
             const imageUrl = clickableTitle.dataset.imageUrl;
-            if (imageUrl) {
-                showImageModal(imageUrl);
-            } else {
-                alert('표시할 이미지가 없습니다.');
-            }
+            if (imageUrl) showImageModal(imageUrl);
+            else alert('표시할 이미지가 없습니다.');
         }
     });
 
@@ -54,57 +48,66 @@ function initialize() {
     };
     
     window.addEventListener('click', closeAllPopups);
-
-    // 날짜 선택 이벤트 리스너 추가
-    DOM.dateSelect.addEventListener('change', handleDateSelect);
-    
-    // 날짜 선택 드롭다운 초기화
-    initializeDateSelector();
 }
 
 /**
- * 사용자가 파일을 선택하거나 드롭했을 때 호출되는 함수
+ * 가져온 날짜 목록으로 드롭다운 메뉴를 채웁니다.
  */
-function handleFileSelect(files) {
-    if (files.length === 0 || appState.isParsing) return;
-    appState.isParsing = true;
+function populateDateSelector() {
+    appState.availableDates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.textContent = date;
+        DOM.dateSelector.appendChild(option);
+    });
+}
 
-    const file = files[0];
-
-    if (file && file.type === 'text/csv') {
-        DOM.messageEl.textContent = '파일을 읽는 중입니다...';
-        DOM.messageEl.style.display = 'block';
+/**
+ * 선택된 날짜에 해당하는 CSV 데이터를 불러옵니다.
+ */
+function loadDataForDate(date) {
+    if (!date) {
         DOM.carTable.style.display = 'none';
+        DOM.messageEl.textContent = '날짜를 선택하면 해당일의 경매 목록을 불러옵니다.';
+        DOM.messageEl.style.display = 'block';
+        return;
+    }
+    
+    // 각 날짜 폴더 안의 파일명을 'data.csv'로 가정합니다.
+    const filePath = `sources/${date}/auction_data.csv`;
 
-        Papa.parse(file, {
-            header: true, skipEmptyLines: true,
-            complete: function(results) {
+    DOM.messageEl.textContent = `'${date}'의 경매 데이터를 불러오는 중입니다...`;
+    DOM.messageEl.style.display = 'block';
+    DOM.carTable.style.display = 'none';
+    DOM.tableBody.innerHTML = ''; // 이전 데이터 삭제
+
+    Papa.parse(filePath, {
+        download: true, // URL로 파일 다운로드
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            if (results.data && results.data.length > 0) {
                 appState.allData = results.data;
                 initializeFiltersAndOptions();
                 buildAndAttachHeader();
-                updateAuctionTitle();
+                updateAuctionTitle(date);
                 render();
                 
                 DOM.messageEl.style.display = 'none';
                 DOM.carTable.style.display = 'table';
-                DOM.fileDropContainer.style.display = 'none';
-                appState.isParsing = false;
-            },
-            error: function(error) { 
-                DOM.messageEl.textContent = '파일 읽기 오류: ' + error.message; 
-                appState.isParsing = false;
+            } else {
+                DOM.messageEl.textContent = `데이터가 없거나 파일을 찾을 수 없습니다. (경로: ${filePath})`;
             }
-        });
-    } else {
-        alert('CSV 파일만 업로드할 수 있습니다.');
-        appState.isParsing = false;
-    }
-    
-    DOM.fileInput.value = null;
+        },
+        error: function(error) {
+            console.error("파일 파싱 오류:", error);
+            DOM.messageEl.textContent = `오류: '${filePath}' 파일을 읽을 수 없습니다. 파일이 정확한 위치에 있는지 확인해주세요.`;
+        }
+    });
 }
 
 /**
- * 테이블 헤더를 생성하고 이벤트 리스너를 연결하는 함수
+ * 테이블 헤더를 생성하고 이벤트 리스너를 연결합니다.
  */
 function buildAndAttachHeader() {
     DOM.tableHead.innerHTML = '';
@@ -115,16 +118,15 @@ function buildAndAttachHeader() {
 
         if (['fuel', 'title', 'km', 'price'].includes(key)) {
             th.classList.add('filterable-header');
-            let options, filterType;
-            if (key === 'fuel') { options = appState.fuelTypes; filterType = 'fuel'; }
-            if (key === 'title') { options = appState.carBrands; filterType = 'title'; }
-            if (key === 'km') { options = Object.keys(mileageRanges); filterType = 'km'; }
-            if (key === 'price') { options = Object.keys(priceRanges); filterType = 'price'; }
-            
             th.innerHTML += ' <span class="arrow">▼</span>';
-            th.addEventListener('click', (e) => { 
-                e.stopPropagation(); 
-                toggleFilterPopup(th, options, filterType); 
+            th.addEventListener('click', (e) => {
+                e.stopPropagation();
+                let options, filterType;
+                if (key === 'fuel') { options = appState.fuelTypes; filterType = 'fuel'; }
+                if (key === 'title') { options = appState.carBrands; filterType = 'title'; }
+                if (key === 'km') { options = Object.keys(mileageRanges); filterType = 'km'; }
+                if (key === 'price') { options = Object.keys(priceRanges); filterType = 'price'; }
+                toggleFilterPopup(th, options, filterType);
             });
         }
         DOM.tableHead.appendChild(th);
@@ -132,7 +134,7 @@ function buildAndAttachHeader() {
 }
 
 /**
- * 현재 활성화된 필터를 적용하고 결과를 렌더링하는 함수
+ * 현재 활성화된 필터를 적용하고 결과를 렌더링합니다.
  */
 function render() {
     const filteredData = appState.allData.filter(row => {
@@ -145,7 +147,7 @@ function render() {
             const min = parseInt(range[0], 10);
             const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
             const km = parseInt(row.km, 10);
-            kmMatch = isNaN(km) ? false : (max === Infinity ? km >= min : (km >= min && km < max));
+            kmMatch = isNaN(km) ? false : (km >= min && km < max);
         }
 
         let priceMatch = true;
@@ -163,10 +165,7 @@ function render() {
     updateHeaderAppearance();
     
     if (filteredData.length === 0) {
-        DOM.tableBody.innerHTML = `
-            <tr><td colspan="${Object.keys(columnMapping).length}" style="padding: 2rem; text-align: center;">
-                검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.
-            </td></tr>`;
+        DOM.tableBody.innerHTML = `<tr><td colspan="${Object.keys(columnMapping).length}" style="padding: 2rem; text-align: center;">검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.</td></tr>`;
     } else {
         displayTableBody(filteredData);
     }
@@ -175,13 +174,13 @@ function render() {
 }
 
 /**
- * 테이블 본문 내용을 생성하고 표시하는 함수
+ * 테이블 본문 내용을 생성하고 표시합니다.
  */
 function displayTableBody(data) {
     DOM.tableBody.innerHTML = data.map(row => {
         const cells = Object.keys(columnMapping).map(key => {
-            let content = '';
-            const cellValue = row[key] || '-';
+            let content = row[key] || '-';
+            const className = ['fuel-column', 'price-column', 'km-column', 'title-column'].find(c => c.startsWith(key)) || '';
 
             if (key === 'details') {
                 return `<td class="details-cell"><div class="details-grid">
@@ -189,25 +188,23 @@ function displayTableBody(data) {
                     <div class="detail-item-label">점수</div><div class="detail-item-value">${row.score || '-'}</div>
                 </div></td>`;
             }
-            
-            content = (key === 'km' && !isNaN(parseInt(row.km, 10))) ? `${parseInt(row.km, 10).toLocaleString('ko-KR')} km` : cellValue;
-
-            const className = ['fuel-column', 'price-column', 'km-column', 'title-column'].find(c => c.startsWith(key)) || '';
-            const clickableClass = (key === 'title' && row.image) ? 'title-clickable' : '';
-            const imageUrl = (key === 'title' && row.image) ? `data-image-url="${row.image}"` : '';
-            
-            return `<td class="${className} ${clickableClass}" ${imageUrl}>${content}</td>`;
+            if (key === 'km' && !isNaN(parseInt(row.km, 10))) {
+                content = `${parseInt(row.km, 10).toLocaleString('ko-KR')} km`;
+            }
+            if (key === 'title' && row.image) {
+                return `<td class="${className} title-clickable" data-image-url="${row.image}">${content}</td>`;
+            }
+            return `<td class="${className}">${content}</td>`;
         }).join('');
         return `<tr>${cells}</tr>`;
     }).join('');
 }
 
 /**
- * 필터 팝업 토글 함수
+ * 필터 팝업을 토글합니다.
  */
 function toggleFilterPopup(thElement, options, filterType) {
     closeAllPopups();
-    
     const existingPopup = thElement.querySelector('.filter-popup');
     if (existingPopup) {
         existingPopup.remove();
@@ -268,64 +265,21 @@ function hideImageModal() {
     DOM.imageModal.style.display = 'none';
 }
 
-function updateAuctionTitle() {
+/**
+ * 페이지 제목을 선택된 경매 날짜로 업데이트합니다.
+ */
+function updateAuctionTitle(date) {
     const h1Element = document.querySelector('h1');
     const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
     
     if (uniqueAuctionNames.length > 0) {
         h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames[0]})`;
     }
-}
-
-// 날짜 선택 드롭다운 초기화
-async function initializeDateSelector() {
-    const dates = await fetchAvailableDates();
-    
-    // 드롭다운 옵션 생성
-    dates.forEach(date => {
-        const option = document.createElement('option');
-        option.value = date;
-        // 날짜 형식 변환 (2025.08.09 -> 2025년 8월 9일)
-        const formattedDate = new Date(date.replace(/\./g, '-')).toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-        option.textContent = formattedDate;
-        DOM.dateSelect.appendChild(option);
-    });
-}
-
-// 날짜 선택 이벤트 핸들러
-async function handleDateSelect(event) {
-    const selectedDate = event.target.value;
-    if (!selectedDate) return;
-
-    DOM.messageEl.textContent = '데이터를 로드하는 중입니다...';
-    DOM.messageEl.style.display = 'block';
-    DOM.carTable.style.display = 'none';
-
-    const csvText = await loadCSVForDate(selectedDate);
-    if (csvText) {
-        Papa.parse(csvText, {
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                appState.allData = results.data;
-                initializeFiltersAndOptions();
-                buildAndAttachHeader();
-                updateAuctionTitle();
-                render();
-                
-                DOM.messageEl.style.display = 'none';
-                DOM.carTable.style.display = 'table';
-                DOM.fileDropContainer.style.display = 'none';
-            },
-            error: function(error) {
-                DOM.messageEl.textContent = '파일 읽기 오류: ' + error.message;
-            }
-        });
-    }
+    // if (date) {
+    //     h1Element.textContent = `차량 경매 정보 (${date})`;
+    // } else {
+    //     h1Element.textContent = `차량 경매 정보`;
+    // }
 }
 
 // --- 앱 실행 ---

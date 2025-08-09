@@ -244,27 +244,22 @@ tbody tr:hover {
     display: none; /* 기본적으로 숨김 */
 }
 
-/* 날짜 선택 드롭다운 스타일 */
-.date-selector {
-    margin-bottom: 2rem;
+/* 날짜 선택 메뉴 스타일 */
+#date-selector-container {
     text-align: center;
+    margin-bottom: 2rem;
 }
 
-.date-select {
+#date-selector-container label {
+    font-size: 1.1rem;
+    margin-right: 1rem;
+    font-weight: 500;
+}
+
+#date-selector-container select {
     padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
     font-size: 1rem;
-    border: 2px solid #007bff;
-    border-radius: 4px;
-    background-color: white;
     cursor: pointer;
-    min-width: 200px;
-}
-
-.date-select:hover {
-    border-color: #0056b3;
-}
-
-.date-select:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
 }

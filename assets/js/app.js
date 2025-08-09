@@ -31,9 +31,43 @@ export const appState = {
     allData: [],
     fuelTypes: [],
     carBrands: [],
-    isParsing: false,
+    availableDates: [], // 사용 가능한 날짜(폴더명) 목록
     activeFilters: {}
 };
+
+/**
+ * GitHub API를 호출하여 sources 폴더 아래의 날짜 폴더 목록을 실제로 가져옵니다.
+ */
+export async function fetchAvailableDates() {
+    // 깃허브 사용자 이름과 저장소 이름을 여기에 입력하세요.
+    const owner = "dennis-seo"; // 님의 GitHub 사용자 이름
+    const repo = "car_auction";  // 님의 저장소 이름
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/sources`;
+
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`GitHub API 호출 실패: ${response.status}`);
+        }
+        const contents = await response.json();
+        
+        // 가져온 내용 중에서 '폴더(dir)'인 것만 필터링하여 이름(날짜)을 추출합니다.
+        const dateFolders = contents
+            .filter(item => item.type === 'dir')
+            .map(item => item.name);
+            
+        // appState에 실제 폴더 목록을 저장합니다.
+        appState.availableDates = dateFolders.sort().reverse(); // 최신순으로 정렬
+        
+    } catch (error) {
+        console.error("폴더 목록을 가져오는 데 실패했습니다:", error);
+        // 에러 발생 시 사용자에게 알림
+        alert("경매 날짜 목록을 불러오는 데 실패했습니다. 저장소 상태를 확인해주세요.");
+        // 에러가 발생해도 앱이 멈추지 않도록 빈 배열을 반환합니다.
+        appState.availableDates = [];
+    }
+}
 
 // --- 데이터 처리 함수 ---
 export function initializeFiltersAndOptions() {
@@ -45,29 +79,4 @@ export function initializeFiltersAndOptions() {
         const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
         return match ? match[1] : null;
     }).filter(Boolean))].sort();
-}
-
-// 날짜 관련 상수 및 함수
-export const SOURCES_PATH = '/Users/jeffrey.bbongs/web_test/sources/';
-
-export async function fetchAvailableDates() {
-    try {
-        const response = await fetch('/api/dates');  // 실제 API 엔드포인트로 수정 필요
-        const dates = await response.json();
-        return dates.sort((a, b) => b.localeCompare(a));  // 날짜 내림차순 정렬
-    } catch (error) {
-        console.error('날짜 목록을 가져오는데 실패했습니다:', error);
-        return [];
-    }
-}
-
-export async function loadCSVForDate(date) {
-    try {
-        const response = await fetch(`/sources/${date}/auction_data.csv`);
-        const csvText = await response.text();
-        return csvText;
-    } catch (error) {
-        console.error('CSV 파일을 로드하는데 실패했습니다:', error);
-        return null;
-    }
 }
