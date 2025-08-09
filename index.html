@@ -399,8 +399,9 @@
                     complete: function(results) {
                         appState.allData = results.data;
                         initializeFiltersAndOptions();
-                        buildAndAttachHeader(); // 헤더를 한 번만 생성
-                        render(); // 필터 적용 및 최초 표시
+                        buildAndAttachHeader();
+                        updateAuctionTitle(); // 여기에 추가
+                        render();
                         
                         DOM.messageEl.style.display = 'none';
                         DOM.carTable.style.display = 'table';
@@ -625,6 +626,18 @@
         /** 이미지 모달을 숨기는 함수 */
         function hideImageModal() {
             DOM.imageModal.style.display = 'none';
+        }
+
+        /**
+         * 경매 제목을 업데이트하는 함수
+         */
+        function updateAuctionTitle() {
+            const h1Element = document.querySelector('h1');
+            const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
+            
+            if (uniqueAuctionNames.length > 0) {
+                h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames[0]})`;
+            }
         }
 
         // --- 앱 실행 ---
