@@ -161,7 +161,7 @@
         /* 특정 열 너비 및 정렬 조정 */
         .km-column, .price-column {
             width: 1%;
-            åwhite-space: nowrap;
+            white-space: nowrap;
         }
         .title-column {
             max-width: 350px; 
@@ -442,6 +442,9 @@
             Object.keys(columnMapping).forEach(key => {
                 const th = document.createElement('th');
                 th.dataset.filterKey = key;
+                
+                // 헤더 텍스트 설정 추가
+                th.innerHTML = columnMapping[key];
 
                 if (['fuel', 'title', 'km', 'price'].includes(key)) {
                     th.classList.add('filterable-header');
@@ -450,6 +453,9 @@
                     if (key === 'title') { options = appState.carBrands; filterType = 'title'; }
                     if (key === 'km') { options = Object.keys(mileageRanges); filterType = 'km'; }
                     if (key === 'price') { options = Object.keys(priceRanges); filterType = 'price'; }
+
+                    // 필터 가능한 헤더의 경우 화살표 추가
+                    th.innerHTML += ' <span class="arrow">▼</span>';
 
                     th.addEventListener('click', (e) => { 
                         e.stopPropagation(); 
@@ -570,7 +576,22 @@
             });
 
             updateHeaderAppearance();
-            displayTableBody(filteredData);
+            
+            // 필터링 결과가 없을 때 메시지 표시
+            if (filteredData.length === 0) {
+                DOM.tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="${Object.keys(columnMapping).length}" style="padding: 2rem; text-align: center;">
+                            검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                displayTableBody(filteredData);
+            }
+
+            // 테이블이 항상 보이도록 설정
+            DOM.carTable.style.display = 'table';
         }
 
         /**

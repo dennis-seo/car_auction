@@ -1,5 +1,5 @@
 // 상수 및 상태 관리
-export const columnMapping = {
+const columnMapping = {
     "sell_number": "출품번호", 
     "title": "차종", 
     "price": "가격<br>(만)", 
@@ -9,7 +9,7 @@ export const columnMapping = {
     "details": "기타"
 };
 
-export const mileageRanges = {
+const mileageRanges = {
     "3만km 이하": "0-30000",
     "3만km ~ 5만km": "30000-50000",
     "5만km ~ 10만km": "50000-100000",
@@ -18,7 +18,7 @@ export const mileageRanges = {
     "20만km 이상": "200000-Infinity"
 };
 
-export const priceRanges = {
+const priceRanges = {
     "500만원 이하": "0-500",
     "500 ~ 1,000만원": "500-1000",
     "1,000 ~ 2,000만원": "1000-2000",
@@ -27,7 +27,7 @@ export const priceRanges = {
 };
 
 // 앱 상태
-export const appState = {
+const appState = {
     allData: [],
     fuelTypes: [],
     carBrands: [],
@@ -36,7 +36,7 @@ export const appState = {
 };
 
 // 데이터 처리 함수들
-export function initializeFiltersAndOptions() {
+function initializeFiltersAndOptions() {
     appState.activeFilters = {
         title: 'all', price: 'all', km: 'all', fuel: 'all'
     };
@@ -47,7 +47,7 @@ export function initializeFiltersAndOptions() {
     }).filter(Boolean))].sort();
 }
 
-export function handleFileSelect(files) {
+function handleFileSelect(files) {
     if (files.length === 0 || appState.isParsing) return;
     appState.isParsing = true;
 
