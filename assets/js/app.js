@@ -54,16 +54,24 @@ export async function fetchAvailableDates() {
         }
         const contents = await response.json();
         
-        // 가져온 내용 중에서 '폴더(dir)'인 것만 필터링하여 이름(날짜)을 추출합니다.
-        const dateFolders = contents
-            .filter(item => item.type === 'dir')
-            .map(item => item.name);
+        // auction_data_yymmdd.csv 형식의 파일만 필터링하여 날짜 부분(yymmdd)을 추출합니다.
+        const dateFiles = contents
+            .filter(item => item.name.startsWith('auction_data_') && item.name.endsWith('.csv'))
+            .map(item => {
+                // 'auction_data_' 접두사와 '.csv' 접미사를 제거하여 yymmdd 부분만 추출
+                const datePart = item.name.replace('auction_data_', '').replace('.csv', '');
+                // yymmdd를 yyyy-mm-dd 형식으로 변환
+                const year = '20' + datePart.substring(0, 2);
+                const month = datePart.substring(2, 4);
+                const day = datePart.substring(4, 6);
+                return `${year}-${month}-${day}`;
+            });
             
-        // appState에 실제 폴더 목록을 저장합니다.
-        appState.availableDates = dateFolders.sort().reverse(); // 최신순으로 정렬
+        // appState에 실제 날짜 목록을 저장합니다.
+        appState.availableDates = dateFiles.sort().reverse(); // 최신순으로 정렬
         
     } catch (error) {
-        console.error("폴더 목록을 가져오는 데 실패했습니다:", error);
+        console.error("경매 데이터 파일 목록을 가져오는 데 실패했습니다:", error);
         // 에러 발생 시 사용자에게 알림
         alert("경매 날짜 목록을 불러오는 데 실패했습니다. 저장소 상태를 확인해주세요.");
         // 에러가 발생해도 앱이 멈추지 않도록 빈 배열을 반환합니다.
