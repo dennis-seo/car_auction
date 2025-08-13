@@ -24,6 +24,32 @@ const DOM = {
 };
 
 /**
+ * yymmdd 형식으로 날짜 문자열을 정규화합니다.
+ * - 입력 예: '250809', '2025.08.09', '2025-08-09', '20250809'
+ */
+function normalizeDateToYYMMDD(input) {
+    if (!input) return '';
+    const str = String(input).trim();
+    // 이미 yymmdd 형식
+    if (/^\d{6}$/.test(str)) return str;
+    // yyyymmdd -> yymmdd
+    if (/^\d{8}$/.test(str)) return str.slice(2);
+    // yyyy.mm.dd 또는 yyyy-mm-dd
+    const m = str.match(/^(\d{4})[.-](\d{2})[.-](\d{2})$/);
+    if (m) {
+        const yy = m[1].slice(2);
+        const mm = m[2];
+        const dd = m[3];
+        return `${yy}${mm}${dd}`;
+    }
+    // 기타 형식은 숫자만 추출해 6자리/8자리 처리
+    const digits = str.replace(/\D/g, '');
+    if (digits.length === 8) return digits.slice(2);
+    if (digits.length === 6) return digits;
+    return str; // 실패 시 원본문자열 반환
+}
+
+/**
  * 앱 초기화: 날짜 목록을 불러와 드롭다운을 설정하고 이벤트 리스너를 연결합니다.
  */
 async function initialize() {
@@ -93,8 +119,8 @@ async function initialize() {
 function populateDateSelector() {
     appState.availableDates.forEach(date => {
         const option = document.createElement('option');
-        option.value = date;
-        option.textContent = date;
+        option.value = date; // yymmdd
+        option.textContent = date; // 표시도 yymmdd (원하면 보기용 포맷으로 바꿔도 됨)
         DOM.dateSelector.appendChild(option);
     });
 }
@@ -110,10 +136,13 @@ function loadDataForDate(date) {
         return;
     }
     
+    // 다양한 입력 포맷을 yymmdd로 정규화
+    const yymmdd = normalizeDateToYYMMDD(date);
+    
     // 파일명 형식: sources/auction_data_yymmdd.csv
-    const filePath = `sources/auction_data_${date}.csv`;
+    const filePath = `sources/auction_data_${yymmdd}.csv`;
 
-    DOM.messageEl.textContent = `'${date}'의 경매 데이터를 불러오는 중입니다...`;
+    DOM.messageEl.textContent = `'${yymmdd}'의 경매 데이터를 불러오는 중입니다...`;
     DOM.messageEl.style.display = 'block';
     DOM.carTable.style.display = 'none';
     DOM.tableBody.innerHTML = ''; // 이전 데이터 삭제
@@ -127,7 +156,7 @@ function loadDataForDate(date) {
                 appState.allData = results.data;
                 initializeFiltersAndOptions();
                 buildAndAttachHeader();
-                updateAuctionTitle(date);
+                updateAuctionTitle(yymmdd);
                 render();
                 
                 DOM.messageEl.style.display = 'none';
