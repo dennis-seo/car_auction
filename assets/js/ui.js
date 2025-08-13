@@ -50,6 +50,28 @@ function normalizeDateToYYMMDD(input) {
 }
 
 /**
+ * yymmdd 또는 yyyymmdd를 표시용 'yy년 mm월 dd일'로 변환합니다.
+ */
+function formatYYMMDDToLabel(input) {
+    if (!input) return '';
+    const str = String(input).trim();
+    const digits = str.replace(/\D/g, '');
+    let yy, mm, dd;
+    if (digits.length === 6) {
+        yy = digits.slice(0, 2);
+        mm = digits.slice(2, 4);
+        dd = digits.slice(4, 6);
+    } else if (digits.length === 8) {
+        yy = digits.slice(2, 4);
+        mm = digits.slice(4, 6);
+        dd = digits.slice(6, 8);
+    } else {
+        return str;
+    }
+    return `${yy}년 ${mm}월 ${dd}일`;
+}
+
+/**
  * 앱 초기화: 날짜 목록을 불러와 드롭다운을 설정하고 이벤트 리스너를 연결합니다.
  */
 async function initialize() {
@@ -119,8 +141,8 @@ async function initialize() {
 function populateDateSelector() {
     appState.availableDates.forEach(date => {
         const option = document.createElement('option');
-        option.value = date; // yymmdd
-        option.textContent = date; // 표시도 yymmdd (원하면 보기용 포맷으로 바꿔도 됨)
+        option.value = date; // yymmdd 값 유지
+        option.textContent = formatYYMMDDToLabel(date); // 표시: 'yy년 mm월 dd일'
         DOM.dateSelector.appendChild(option);
     });
 }
