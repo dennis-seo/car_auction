@@ -31,14 +31,14 @@ export const appState = {
     allData: [],
     fuelTypes: [],
     carBrands: [],
-    availableDates: [], // 사용 가능한 날짜(폴더명) 목록
+    availableDates: [], // 사용 가능한 날짜(파일명 내 yymmdd) 목록
     activeFilters: {},
     yearMin: null,
     yearMax: null
 };
 
 /**
- * GitHub API를 호출하여 sources 폴더 아래의 날짜 폴더 목록을 실제로 가져옵니다.
+ * GitHub API를 호출하여 sources 폴더 아래의 파일 목록을 가져와 `auction_data_yymmdd.csv` 패턴에서 날짜를 추출합니다.
  */
 export async function fetchAvailableDates() {
     // 깃허브 사용자 이름과 저장소 이름을 여기에 입력하세요.
@@ -54,27 +54,20 @@ export async function fetchAvailableDates() {
         }
         const contents = await response.json();
         
-        // auction_data_yymmdd.csv 형식의 파일만 필터링하여 날짜 부분(yymmdd)을 추출합니다.
-        const dateFiles = contents
-            .filter(item => item.name.startsWith('auction_data_') && item.name.endsWith('.csv'))
-            .map(item => {
-                // 'auction_data_' 접두사와 '.csv' 접미사를 제거하여 yymmdd 부분만 추출
-                const datePart = item.name.replace('auction_data_', '').replace('.csv', '');
-                // yymmdd를 yyyy-mm-dd 형식으로 변환
-                const year = '20' + datePart.substring(0, 2);
-                const month = datePart.substring(2, 4);
-                const day = datePart.substring(4, 6);
-                return `${year}-${month}-${day}`;
-            });
+        // 파일명에서 yymmdd를 추출 (예: auction_data_250813.csv)
+        const datePattern = /^auction_data_(\d{6})\.csv$/;
+        const dates = contents
+            .filter(item => item.type === 'file' && datePattern.test(item.name))
+            .map(item => item.name.match(datePattern)[1]);
             
-        // appState에 실제 날짜 목록을 저장합니다.
-        appState.availableDates = dateFiles.sort().reverse(); // 최신순으로 정렬
+        // appState에 실제 파일 날짜 목록을 저장합니다.
+        appState.availableDates = dates.sort().reverse(); // 최신순으로 정렬
         
     } catch (error) {
-        console.error("경매 데이터 파일 목록을 가져오는 데 실패했습니다:", error);
+        console.error("파일 목록을 가져오는 데 실패했습니다:", error);
         // 에러 발생 시 사용자에게 알림
         alert("경매 날짜 목록을 불러오는 데 실패했습니다. 저장소 상태를 확인해주세요.");
-        // 에러가 발생해도 앱이 멈추지 않도록 빈 배열을 반환합니다.
+        // 에러가 발생해도 앱이 멈추지 않도록 빈 배열을 설정합니다.
         appState.availableDates = [];
     }
 }

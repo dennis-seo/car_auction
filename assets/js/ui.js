@@ -110,8 +110,8 @@ function loadDataForDate(date) {
         return;
     }
     
-    // 각 날짜 폴더 안의 파일명을 'data.csv'로 가정합니다.
-    const filePath = `sources/${date}/auction_data.csv`;
+    // 파일명 형식: sources/auction_data_yymmdd.csv
+    const filePath = `sources/auction_data_${date}.csv`;
 
     DOM.messageEl.textContent = `'${date}'의 경매 데이터를 불러오는 중입니다...`;
     DOM.messageEl.style.display = 'block';
