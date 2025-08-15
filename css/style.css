@@ -356,62 +356,336 @@ tbody tr:hover {
     display: none; /* 기본적으로 숨김 */
 }
 
-/* 날짜 선택 메뉴 스타일 */
+/* --- 메인 검색 영역 스타일 시작 --- */
+.main-search-area,
+.main-search-container {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid #edf1f7;
+    border-radius: 20px;
+    padding: 24px 24px 22px;
+    box-shadow: 0 12px 30px rgba(21, 45, 72, 0.08);
+    margin-bottom: 20px;
+}
+
+/* 코너 은은한 하이라이트 효과 */
+.main-search-area::before,
+.main-search-container::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background:
+        radial-gradient(1200px 80px at 10% -20%, rgba(33, 150, 243, 0.06), transparent 60%),
+        radial-gradient(1200px 80px at 90% 120%, rgba(33, 150, 243, 0.06), transparent 60%);
+    pointer-events: none;
+}
+
+.main-auto-search h3 {
+    margin: 0 0 14px;
+    font-size: 26px;
+    font-weight: 800;
+    color: #273142;
+}
+
+.input-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.input-area input {
+    width: min(520px, 100%);
+    height: 52px;
+    padding: 0 56px 0 20px;
+    border: 1px solid #e4e9f1;
+    border-radius: 999px;
+    outline: none;
+    background-color: #ffffff;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.02);
+    font-size: 15px;
+    color: #2c3e50;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.input-area input::placeholder {
+    color: #a0a7b4;
+}
+
+.input-area input:focus {
+    border-color: #90caf9;
+    box-shadow: 0 0 0 4px rgba(144, 202, 249, 0.25);
+}
+
+.btn-search-submit {
+    position: absolute;
+    right: 6px;
+    display: flex;
+}
+
+.btn-search-submit button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid #e0e6ef;
+    background: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s, transform 0.05s, border-color 0.15s;
+    /* 돋보기 아이콘 */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="%2357646f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 20px 20px;
+}
+
+.btn-search-submit button:hover {
+    background: #f6f9ff;
+    border-color: #c9d6ea;
+}
+
+.btn-search-submit button:active {
+    transform: scale(0.97);
+}
+
+.main-car-filter {
+    margin-top: 18px;
+}
+
+.car-select-wrap {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
+    gap: 14px;
+    align-items: center;
+}
+
+.car-select-box {
+    position: relative;
+    height: 56px;
+    background: #ffffff;
+    border: 1px solid #e4e9f1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.car-select-box::after {
+    content: '';
+    position: absolute;
+    right: 14px;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%23808b98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.car-select-box:hover {
+    border-color: #cfd8e6;
+}
+
+.car-select-box:focus-within {
+    border-color: #90caf9;
+    box-shadow: 0 0 0 4px rgba(144, 202, 249, 0.25);
+}
+
+.car-select-box.disabled {
+    background: #f6f8fb;
+    border-color: #e8edf5;
+    cursor: not-allowed;
+}
+
+.car-select-box.disabled::after {
+    filter: grayscale(1) opacity(0.6);
+}
+
+.car-select-label {
+    color: #3b4556;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+}
+
+.car-select-label.disabled {
+    color: #a0a7b4;
+}
+
+.filter-search-btn {
+    height: 56px;
+    padding: 0 22px;
+    min-width: 96px;
+    border-radius: 12px;
+    border: 0;
+    background: #1976d2;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(25, 118, 210, 0.25);
+    transition: transform 0.05s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.filter-search-btn:hover {
+    background: #1565c0;
+    box-shadow: 0 8px 16px rgba(25, 118, 210, 0.3);
+}
+
+.filter-search-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 4px 10px rgba(25, 118, 210, 0.22);
+}
+
+/* 반응형 대응 */
+@media (max-width: 860px) {
+    .car-select-wrap {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .input-area {
+        justify-content: stretch;
+    }
+    .input-area input {
+        width: 100%;
+    }
+    .car-select-wrap {
+        grid-template-columns: 1fr;
+    }
+}
+/* --- 메인 검색 영역 스타일 끝 --- */
+
+/* --- 날짜 선택 카드 스타일 시작 --- */
 #date-selector-container {
-    text-align: center;
-    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    padding: 12px 16px;
+    margin: 16px auto 24px;
+    background: #ffffff;
+    border: 1px solid #edf1f7;
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(21, 45, 72, 0.06);
+    width: fit-content;
+    max-width: 100%;
 }
 
 #date-selector-container label {
-    font-size: 1.1rem;
-    margin-right: 1rem;
-    font-weight: 500;
+    margin: 0;
+    font-weight: 700;
+    color: #273142;
+    font-size: 16px;
 }
 
 #date-selector-container select {
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 1rem;
+    height: 44px;
+    min-width: 220px;
+    padding: 0 44px 0 44px; /* left for calendar icon */
+    border-radius: 12px;
+    border: 1px solid #e4e9f1;
+    background-color: #ffffff;
+    color: #2c3e50;
+    font-size: 15px;
+    line-height: 44px;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.02);
     cursor: pointer;
+    appearance: none;
+    background-image:
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23808b98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'),
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%23808b98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+    background-repeat: no-repeat, no-repeat;
+    background-position: 14px center, right 14px center;
+    background-size: 18px 18px, 12px 12px;
 }
-/*
-+*/
-/* ionRangeSlider 트랙 색상 변경 */
-/*
-+
-+.irs-bar,
-+.irs-bar-edge {
-+    background: #1976d2 !important;
-+}
-+
-+*/
-/* 슬라이더 핸들(버튼) 색상 및 그림자 */
-/*
-+
-+.irs-handle {
-+    background: #90caf9 !important;
-+    border: 2px solid #1976d2 !important;
-+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
-+}
-+
-+*/
-/* 슬라이더 값 표시 폰트 및 배경 */
-/*
-+
-+.irs-from, .irs-to, .irs-single {
-+    background: #e3f2fd !important;
-+    color: #1976d2 !important;
-+    font-weight: bold;
-+    border-radius: 8px;
-+}
-+
-+*/
-/* 슬라이더 전체 영역 여백 및 폰트 */
-/*
-+
-+.irs {
-+    font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
-+    font-size: 1.05em;
-+    padding: 8px 0;
-+}*/
+
+#date-selector-container select:hover {
+    border-color: #cfd8e6;
+}
+
+#date-selector-container select:focus {
+    border-color: #90caf9;
+    box-shadow: 0 0 0 4px rgba(144, 202, 249, 0.25);
+    outline: none;
+}
+
+@media (max-width: 560px) {
+    #date-selector-container {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+    }
+    #date-selector-container select {
+        width: 100%;
+        min-width: 0;
+    }
+}
+/* --- 날짜 선택 카드 스타일 끝 --- */
+
+/* --- 커스텀 셀렉트 드롭다운(제조사/모델/세부모델 공통) --- */
+#brand-select,
+#model-select,
+#submodel-select {
+    position: relative;
+}
+
+#brand-select .select-dropdown,
+#model-select .select-dropdown,
+#submodel-select .select-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    z-index: 50;
+    background: #ffffff;
+    border: 1px solid #dfe6f1;
+    border-radius: 12px;
+    box-shadow: 0 14px 32px rgba(21, 45, 72, 0.12);
+    overflow: hidden;
+}
+
+#brand-select .select-dropdown-inner,
+#model-select .select-dropdown-inner,
+#submodel-select .select-dropdown-inner {
+    max-height: 340px; /* 스크롤 영역 높이 */
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+#brand-select .select-group-title,
+#model-select .select-group-title,
+#submodel-select .select-group-title {
+    padding: 8px 16px 6px;
+    color: #1976d2;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+#brand-select .select-option,
+#model-select .select-option,
+#submodel-select .select-option {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: #2c3e50;
+    transition: background-color 0.15s;
+}
+
+#brand-select .select-option:hover,
+#model-select .select-option:hover,
+#submodel-select .select-option:hover {
+    background: #f4f7fb;
+}
+
+#brand-select .select-option.selected,
+#model-select .select-option.selected,
+#submodel-select .select-option.selected {
+    background: #e7f2ff;
+    color: #1565c0;
+    font-weight: 700;
+}

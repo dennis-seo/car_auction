@@ -7,6 +7,93 @@ import {
     fetchAvailableDates
 } from './utils.js';
 
+// 제조사 목록은 외부 JSON에서 지연 로드합니다(캐시 포함)
+let cachedBrandList = null;
+async function loadBrandList() {
+    if (cachedBrandList) return cachedBrandList;
+    try {
+        const res = await fetch('data/brands.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`brands.json fetch failed: ${res.status}`);
+        const json = await res.json();
+        cachedBrandList = json;
+        return cachedBrandList;
+    } catch (err) {
+        console.error('[브랜드 목록 로드 실패]', err);
+        // 최소한의 안전한 기본값
+        cachedBrandList = { domestic: [], import: [] };
+        return cachedBrandList;
+    }
+}
+
+// 모델 목록은 외부 JSON에서 지연 로드합니다(캐시 포함)
+let cachedModelMap = null;
+async function loadModelMap() {
+    if (cachedModelMap) return cachedModelMap;
+    try {
+        const res = await fetch('data/model.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`model.json fetch failed: ${res.status}`);
+        const json = await res.json();
+        cachedModelMap = json;
+        return cachedModelMap;
+    } catch (err) {
+        console.error('[모델 목록 로드 실패]', err);
+        cachedModelMap = {};
+        return cachedModelMap;
+    }
+}
+
+// 한글 브랜드명 -> model.json 키 매핑
+const BRAND_TO_MODEL_KEY = {
+    // 국산
+    '현대': 'huyndai', // 주의: 데이터 키 오탈자 반영
+    '기아': 'kia',
+    '제네시스': 'genesis',
+    '르노삼성': 'renault_samsung',
+    '쉐보레(대우)': 'chevrolet_daewoo',
+    '쌍용': 'ssangyong',
+    '대창모터스': 'daechang_motors',
+    '한국상용트럭': 'korea_truck',
+    '스마트이브이': 'smart_ev',
+    // 수입
+    '벤츠': 'mercedes',
+    'BMW': 'bmw',
+    '아우디': 'audi',
+    '폭스바겐': 'volkswagen',
+    '미니': 'mini',
+    '지프': 'jeep',
+    '랜드로버': 'land_rover',
+    '포드': 'ford',
+    '볼보': 'volvo',
+    '테슬라': 'tesla',
+    '푸조': 'peugeot',
+    '링컨': 'lincoln',
+    '포르쉐': 'porsche',
+    '재규어': 'jaguar',
+    '도요타': 'toyota',
+    '혼다': 'honda',
+    '렉서스': 'lexus',
+    '닛산': 'nissan',
+    '캐딜락': 'cadillac',
+    '인피니티': 'infinity', // 데이터 키 기준
+    '크라이슬러': 'chrysler',
+    '람보르기니': 'lamborghini',
+    '마세라티': 'maserati',
+    '시트로엥': 'citroen',
+    '르노': 'renault',
+    '피아트': 'fiat',
+    '알파로메오': 'alfa_romeo',
+    '지리자동차': 'jerry', // 데이터 키 기준
+    '신위안': 'sinwian',
+    'DS': 'ds',
+    '폴스타': 'polestar',
+    '벤틀리': 'bentley',
+    '롤스로이스': 'rolls_royce',
+    '애스턴마틴': 'aston_martin',
+    '쉐보레': 'chevrolet',
+    '허머': 'hummer',
+    'GMC': 'gmc'
+};
+
 // --- UI 관련 DOM 요소 캐싱 ---
 const DOM = {
     dateSelector: document.getElementById('date-selector'),
@@ -132,7 +219,10 @@ async function initialize() {
     window.addEventListener('click', (e) => {
         const isPopup = e.target.closest('.filter-popup');
         const isHeader = e.target.closest('.filterable-header');
-        if (isPopup || isHeader) return;
+        const isSelectDropdown = e.target.closest('.select-dropdown');
+        const isBrandSelect = e.target.closest('#brand-select');
+        const isModelSelect = e.target.closest('#model-select');
+        if (isPopup || isHeader || isSelectDropdown || isBrandSelect || isModelSelect) return;
         document.querySelectorAll('.filter-popup').forEach(popup => {
             popup.classList.remove('active');
             popup.addEventListener('transitionend', function onEnd() {
@@ -140,7 +230,12 @@ async function initialize() {
                 if (popup.parentNode) popup.parentNode.removeChild(popup);
             });
         });
+        closeBrandDropdown();
+        closeModelDropdown();
     });
+    
+    setupBrandDropdown();
+    setupModelSelect();
 }
 
 /**
@@ -269,11 +364,14 @@ function render() {
             const [minYear, maxYear] = appState.activeFilters.year;
             if(isNaN(year) || year < minYear || year > maxYear) return false;
         }
-        // ... 나머지 조건 ...
-        // 차종
+        // 제조사(차종)
         const titleArr = appState.activeFilters.title || [];
         const brandMatch = titleArr.length === 0
             || (row.title && titleArr.some(val => row.title.includes(`[${val}]`)));
+        // 모델
+        const modelArr = appState.activeFilters.model || [];
+        const modelMatch = modelArr.length === 0
+            || (row.title && modelArr.some(val => row.title.includes(val)));
         // 연료
         const fuelArr = appState.activeFilters.fuel || [];
         const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
@@ -302,7 +400,7 @@ function render() {
                 return !isNaN(priceValue) && (max === Infinity ? priceValue >= min : (priceValue >= min && priceValue < max));
             });
         }
-        return brandMatch && fuelMatch && kmMatch && priceMatch;
+        return brandMatch && modelMatch && fuelMatch && kmMatch && priceMatch;
     });
     // 정렬 로직 (마지막 필터 기준)
     const priceArr = appState.activeFilters.price || [];
@@ -326,6 +424,8 @@ function render() {
         displayTableBody(filteredData);
     }
     DOM.carTable.style.display = 'table';
+    // 메인 필터 라벨 동기화(브랜드)
+    updateMainFilterLabels();
 }
 
 /**
@@ -414,7 +514,7 @@ function updateAndApplyFilters_multi(filterType, value) {
         appState.activeFilters[filterType] = [];
         if (["price", "km"].includes(filterType)) {
             // 전체 해제 시 정렬도 없앰
-            const other = filterType === 'price' ? 'km' : 'price';
+            const other = filterType === 'price' ? 'km':'price';
             if ((appState.activeFilters[other]||[]).length > 0) appState.lastSortedFilter = other;
             else appState.lastSortedFilter = null;
         }
@@ -443,6 +543,7 @@ function updateAndApplyFilters_multi(filterType, value) {
 
 const FILTER_LABELS = {
     title: '차종',
+    model: '모델',
     fuel: '연료',
     km: '주행거리',
     price: '가격'
@@ -501,6 +602,12 @@ function renderActiveFilterPills_multi() {
                         else appState.lastSortedFilter = null;
                     } // else, 마지막 삭제가 이 필드였음을 유지
                 }
+                // 모델 제거 시 라벨 업데이트
+                if (key === 'model' && (appState.activeFilters.model||[]).length === 0) {
+                    const modelBox = document.getElementById('model-select');
+                    const label = modelBox?.querySelector('.car-select-label');
+                    if (label) label.textContent = '모델';
+                }
                 render();
             };
             pill.appendChild(closeBtn);
@@ -541,6 +648,7 @@ function toggleYearSliderPopup(thElement) {
         </div>
     `;
     thElement.appendChild(popup);
+    // filter-popup이 보여질 때 .active를 추가하여 트랜지션 적용
     setTimeout(() => popup.classList.add('active'), 10);
     // ionRangeSlider 초기화(jQuery 기반)
     $(function() {
@@ -628,6 +736,203 @@ function showDetailsModal(data) {
 /** 상세 정보 모달을 숨기는 함수 */
 function hideDetailsModal() {
     DOM.detailsModal.style.display = 'none';
+}
+
+// --- 메인 검색영역 - 제조사 드롭다운 구성 ---
+function setupBrandDropdown() {
+    const box = document.getElementById('brand-select');
+    if (!box) return;
+    box.setAttribute('role', 'button');
+    box.setAttribute('tabindex', '0');
+    box.setAttribute('aria-haspopup', 'listbox');
+    box.setAttribute('aria-expanded', 'false');
+    box.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleBrandDropdown();
+    });
+    box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleBrandDropdown();
+        }
+    });
+}
+
+async function toggleBrandDropdown() {
+    const box = document.getElementById('brand-select');
+    let dropdown = box.querySelector('.select-dropdown');
+    if (dropdown) {
+        closeBrandDropdown();
+        return;
+    }
+    await buildBrandDropdown();
+}
+
+function closeBrandDropdown() {
+    const box = document.getElementById('brand-select');
+    if (!box) return;
+    const dd = box.querySelector('.select-dropdown');
+    if (dd) dd.remove();
+    box?.setAttribute('aria-expanded', 'false');
+}
+
+async function buildBrandDropdown() {
+    const box = document.getElementById('brand-select');
+    if (!box) return;
+    const current = (appState.activeFilters.title || [])[0] || null;
+    const brandList = await loadBrandList();
+    const dropdown = document.createElement('div');
+    dropdown.className = 'select-dropdown';
+    if (!brandList || (!brandList.domestic && !brandList.import)) {
+        dropdown.innerHTML = `<div class="select-dropdown-inner"><div style="padding:14px 16px;color:#8a94a6;">목록을 불러오지 못했습니다.</div></div>`;
+    } else {
+        dropdown.innerHTML = `
+            <div class="select-dropdown-inner">
+                <div class="select-list" role="listbox" aria-label="제조사 선택">
+                    <div class="select-group-title">국산</div>
+                    ${(brandList.domestic||[]).map(name => optionTemplate(name, current)).join('')}
+                    <div class="select-group-title">수입</div>
+                    ${(brandList.import||[]).map(name => optionTemplate(name, current)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
+    dropdown.querySelectorAll('.select-option').forEach(el => {
+        el.addEventListener('click', () => {
+            const value = el.dataset.value;
+            // 단일 선택으로 동기화 및 모델 초기화
+            onBrandSelected(value || null);
+            closeBrandDropdown();
+        });
+    });
+    box.appendChild(dropdown);
+    box.setAttribute('aria-expanded', 'true');
+}
+
+function optionTemplate(name, current) {
+    const selected = current === name;
+    return `<div class="select-option${selected ? ' selected' : ''}" role="option" aria-selected="${selected}" data-value="${name}">${name}</div>`;
+}
+
+/** 렌더 이후 메인 필터 라벨 텍스트를 활성 필터와 동기화 */
+function updateMainFilterLabels() {
+    // 브랜드 라벨
+    const brandBox = document.getElementById('brand-select');
+    if (brandBox) {
+        const brandLabel = brandBox.querySelector('.car-select-label');
+        const currentBrand = (appState.activeFilters.title || [])[0] || null;
+        if (brandLabel) brandLabel.textContent = currentBrand || '제조사';
+    }
+    // 모델 라벨 및 활성/비활성 상태
+    const modelBox = document.getElementById('model-select');
+    if (modelBox) {
+        const currentBrand = (appState.activeFilters.title || [])[0] || null;
+        if (!currentBrand) {
+            // 브랜드가 없으면 모델 비활성화
+            modelBox.classList.add('disabled');
+            const lbl = modelBox.querySelector('.car-select-label');
+            if (lbl) {
+                lbl.classList.add('disabled');
+                lbl.textContent = '모델';
+            }
+        } else {
+            // 브랜드가 있으면 모델 활성화
+            modelBox.classList.remove('disabled');
+            const lbl = modelBox.querySelector('.car-select-label');
+            if (lbl) lbl.classList.remove('disabled');
+            const currentModel = (appState.activeFilters.model || [])[0] || null;
+            if (lbl) lbl.textContent = currentModel || '모델';
+        }
+    }
+}
+
+// --- 모델 선택 UI ---
+function setupModelSelect() {
+    const box = document.getElementById('model-select');
+    if (!box) return;
+    box.setAttribute('role', 'button');
+    box.setAttribute('tabindex', '0');
+    box.setAttribute('aria-haspopup', 'listbox');
+    box.setAttribute('aria-expanded', 'false');
+    box.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleModelDropdown();
+    });
+    box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleModelDropdown();
+        }
+    });
+}
+
+async function toggleModelDropdown() {
+    const box = document.getElementById('model-select');
+    if (!box || box.classList.contains('disabled')) return;
+    let dropdown = box.querySelector('.select-dropdown');
+    if (dropdown) {
+        closeModelDropdown();
+        return;
+    }
+    await buildModelDropdown();
+}
+
+function closeModelDropdown() {
+    const box = document.getElementById('model-select');
+    if (!box) return;
+    const dd = box.querySelector('.select-dropdown');
+    if (dd) dd.remove();
+    box?.setAttribute('aria-expanded', 'false');
+}
+
+async function buildModelDropdown() {
+    const box = document.getElementById('model-select');
+    if (!box) return;
+    const currentBrand = (appState.activeFilters.title || [])[0] || null;
+    const currentModel = (appState.activeFilters.model || [])[0] || null;
+    const modelMap = await loadModelMap();
+    const key = currentBrand ? BRAND_TO_MODEL_KEY[currentBrand] : null;
+    const models = key ? (modelMap[key] || []) : [];
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'select-dropdown';
+    if (!currentBrand) {
+        dropdown.innerHTML = `<div class="select-dropdown-inner"><div style="padding:14px 16px;color:#8a94a6;">먼저 제조사를 선택하세요.</div></div>`;
+    } else if (!models || models.length === 0) {
+        dropdown.innerHTML = `<div class="select-dropdown-inner"><div style="padding:14px 16px;color:#8a94a6;">모델 정보가 없습니다.</div></div>`;
+    } else {
+        dropdown.innerHTML = `
+            <div class="select-dropdown-inner">
+                <div class="select-list" role="listbox" aria-label="모델 선택">
+                    ${models.map(name => optionTemplate(name, currentModel)).join('')}
+                </div>
+            </div>
+        `;
+    }
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
+    dropdown.querySelectorAll('.select-option').forEach(el => {
+        el.addEventListener('click', () => {
+            const value = el.dataset.value;
+            // 단일 선택으로 동기화
+            appState.activeFilters.model = value ? [value] : [];
+            render();
+            closeModelDropdown();
+        });
+    });
+    box.appendChild(dropdown);
+    box.setAttribute('aria-expanded', 'true');
+}
+
+function onBrandSelected(brandOrNull) {
+    // 브랜드 변경 적용
+    appState.activeFilters.title = brandOrNull ? [brandOrNull] : [];
+    // 브랜드 바뀌면 모델 초기화 및 라벨 초기화
+    appState.activeFilters.model = [];
+    const modelBox = document.getElementById('model-select');
+    const label = modelBox?.querySelector('.car-select-label');
+    if (label) label.textContent = '모델';
+    render();
 }
 
 // --- 앱 실행 ---

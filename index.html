@@ -21,12 +21,38 @@
             <label for="date-selector">경매 날짜 선택:</label>
             <select id="date-selector">
                 <option value="">날짜를 선택하세요</option>
-                </select>
+            </select>
         </div>
         
         <p id="message">날짜를 선택하면 해당일의 경매 목록을 불러옵니다.</p>
 
-
+        <div class="main-search-container">
+            <div class="main-auto-search">
+                <h3>원하는 차를 찾아보세요!</h3>
+                <div class="input-area">
+                    <input type="text" placeholder="찾으시는 차량명을 입력하세요" value="" aria-label="차량명 검색">
+                    <span class="btn-base big btn-search-submit">
+                        <button type="button" aria-label="검색"></button>
+                    </span>
+                </div>
+            </div>
+            <div class="main-car-filter">
+                <div class="car-select-wrap">
+                    <div class="car-select-box" id="brand-select">
+                        <div class="car-select-label">제조사</div>
+                    </div>
+                    <div class="car-select-box disabled" id="model-select">
+                        <div class="car-select-label disabled">모델</div>
+                    </div>
+                    <div class="car-select-box disabled" id="submodel-select">
+                        <div class="car-select-label disabled">세부모델</div>
+                    </div>
+                    <span class="btn-base tx-white bg-blue70 big radius fr">
+                        <button type="button" class="filter-search-btn">검색</button>
+                    </span>
+                </div>
+            </div>
+        </div>
 
         <div id="active-filters" class="active-filters-bar"></div>
 
