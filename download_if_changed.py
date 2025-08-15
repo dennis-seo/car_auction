@@ -6,7 +6,7 @@ import sys
 # ===== 설정 =====
 URL = "https://www.xn--2q1bm5w1qdbqaq6cwvm.com/wp-content/themes/welcomecar-new/auction_data.csv"
 META_FILE = "auction_data.meta"  # ETag, Last-Modified 저장
-SAVE_DIR = "data"  # 저장 폴더
+SAVE_DIR = "sources"  # 저장 폴더
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # ===== 실행 조건 필터 =====
