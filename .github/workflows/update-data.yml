@@ -1,0 +1,41 @@
+name: Update Auction Data
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # UTC 기준 매시간 실행
+  workflow_dispatch:       # 수동 실행 버튼
+
+permissions:
+  contents: write          # 커밋/푸시 권한
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run downloader
+        run: python download_if_changed.py
+
+      - name: Commit changes if any
+        run: |
+          if [[ `git status --porcelain` ]]; then
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            git add .
+            git commit -m "Update auction data [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi
