@@ -20,7 +20,15 @@ const DOM = {
     detailsModal: document.getElementById('details-modal'),
     detailsModalContent: document.getElementById('details-modal-content'),
     detailsModalClose: document.querySelector('.details-close'),
-    activeFiltersBar: document.getElementById('active-filters')
+    activeFiltersBar: document.getElementById('active-filters'),
+    auctionLogoContainer: document.getElementById('auction-logo-container'),
+    // 경매장 이름과 로고 이미지 경로 매핑
+    logoMap: {
+        "현대 경매장": "images/hyundai_glovis.png",
+        "롯데 경매장": "images/lotte_auto_auction.png",
+        "오토허브 경매장": "images/auto_hub_auction.png",
+        "SK렌터카 경매장": "images/sk_rent.png"
+    }
 };
 
 /**
@@ -125,7 +133,7 @@ async function initialize() {
         const isPopup = e.target.closest('.filter-popup');
         const isHeader = e.target.closest('.filterable-header');
         if (isPopup || isHeader) return;
-        document.querySelectorAll('.filter-popup.active').forEach(popup => {
+        document.querySelectorAll('.filter-popup').forEach(popup => {
             popup.classList.remove('active');
             popup.addEventListener('transitionend', function onEnd() {
                 popup.removeEventListener('transitionend', onEnd);
@@ -179,6 +187,7 @@ function loadDataForDate(date) {
                 initializeFiltersAndOptions();
                 buildAndAttachHeader();
                 updateAuctionTitle(yymmdd);
+                renderAuctionLogos();
                 render();
                 
                 DOM.messageEl.style.display = 'none';
@@ -190,6 +199,27 @@ function loadDataForDate(date) {
         error: function(error) {
             console.error("파일 파싱 오류:", error);
             DOM.messageEl.textContent = `오류: '${filePath}' 파일을 읽을 수 없습니다. 파일이 정확한 위치에 있는지 확인해주세요.`;
+        }
+    });
+}
+
+/**
+ * 데이터에 포함된 경매장 로고를 제목 아래에 표시합니다.
+ */
+function renderAuctionLogos() {
+    const container = DOM.auctionLogoContainer;
+    if (!container) return;
+    
+    container.innerHTML = '';
+    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
+    
+    uniqueAuctionNames.forEach(name => {
+        const logoFileName = DOM.logoMap[name];
+        if (logoFileName) {
+            const img = document.createElement('img');
+            img.src = logoFileName;
+            img.alt = `${name} 로고`;
+            container.appendChild(img);
         }
     });
 }
@@ -570,7 +600,7 @@ function updateAuctionTitle(date) {
     const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
     
     if (uniqueAuctionNames.length > 0) {
-        h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames[0]})`;
+        h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames.join(', ')})`;
     }
 }
 

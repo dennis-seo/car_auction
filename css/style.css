@@ -26,6 +26,22 @@ h1 {
     margin-bottom: 2rem;
 }
 
+/* 경매장 로고 컨테이너 및 이미지 스타일 */
+#auction-logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-top: -12px;
+    margin-bottom: 12px;
+}
+#auction-logo-container img {
+    height: 100px;
+    width: auto;
+    object-fit: contain;
+    filter: saturate(1.05);
+}
+
 /* --- 파일 드롭존 스타일 시작 --- */
 .file-drop-area {
     position: relative;
