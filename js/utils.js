@@ -2,7 +2,7 @@
 export const columnMapping = {
     "sell_number": "출품번호", 
     "title": "차종", 
-    "price": "가격<br>(만)", 
+    "price": "가격(만)",
     "year": "연식", 
     "km": "주행거리", 
     "fuel": "연료", 
@@ -55,26 +55,23 @@ export async function fetchAvailableDates() {
         const contents = await response.json();
         
         // 파일명에서 yymmdd를 추출 (예: auction_data_250813.csv)
-        const datePattern = /^auction_data_(\d{6})\.csv$/;
+        const datePattern = /^auction_data(\d?)_(\d{6})\.csv$/;
         const dates = contents
             .filter(item => item.type === 'file' && datePattern.test(item.name))
-            .map(item => item.name.match(datePattern)[1]);
+            .map(item => item.name.match(datePattern)[2]);
             
         // appState에 실제 파일 날짜 목록을 저장합니다.
         appState.availableDates = dates.sort().reverse(); // 최신순으로 정렬
         
     } catch (error) {
         console.error("파일 목록을 가져오는 데 실패했습니다:", error);
-        // 에러 발생 시 사용자에게 알림
         alert("경매 날짜 목록을 불러오는 데 실패했습니다. 저장소 상태를 확인해주세요.");
-        // 에러가 발생해도 앱이 멈추지 않도록 빈 배열을 설정합니다.
         appState.availableDates = [];
     }
 }
 
 // --- 데이터 처리 함수 ---
 export function initializeFiltersAndOptions() {
-    // 각 필터를 다중값 배열로 초기화(전체 상태는 빈 배열)
     appState.activeFilters = {
         title: [], price: [], km: [], fuel: [], year: []
     };
@@ -83,7 +80,6 @@ export function initializeFiltersAndOptions() {
         const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
         return match ? match[1] : null;
     }).filter(Boolean))].sort();
-    // year 필드에서 min/max 구하기
     const years = appState.allData.map(row => parseInt(row.year, 10)).filter(v => !isNaN(v));
     appState.yearMin = years.length > 0 ? Math.min(...years) : 2000;
     appState.yearMax = years.length > 0 ? Math.max(...years) : 2026;

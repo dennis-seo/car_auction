@@ -5,7 +5,7 @@ import {
     priceRanges,
     initializeFiltersAndOptions,
     fetchAvailableDates
-} from './app.js';
+} from './utils.js';
 
 // --- UI 관련 DOM 요소 캐싱 ---
 const DOM = {
@@ -307,7 +307,6 @@ function displayTableBody(data) {
             let content = row[key] || '-';
             const className = ['fuel-column', 'price-column', 'km-column', 'title-column'].find(c => c.startsWith(key)) || '';
 
-
             if (key === 'sell_number') {
                 return `<td class="${className} sell-number-clickable" data-sell-number="${content}">${content}</td>`;
             }
@@ -403,7 +402,7 @@ function updateAndApplyFilters_multi(filterType, value) {
         }
         // 전체 상태면 null로
         if (["price","km"].includes(filterType) && selectedArr.length === 0) {
-            const other = filterType === 'price' ? 'km' : 'price';
+            const other = filterType === 'price' ? 'km':'price';
             if ((appState.activeFilters[other]||[]).length > 0) appState.lastSortedFilter = other;
             else appState.lastSortedFilter = null;
         }
@@ -579,7 +578,7 @@ function updateAuctionTitle(date) {
 function showDetailsModal(data) {
     const { sell_number, title, year, km, color, fuel, car_number, price, auction_name, score } = data;
     const infoString = [year, km ? `${parseInt(km, 10).toLocaleString('ko-KR')}km` : null, color, fuel, car_number].filter(Boolean).join(' | ');
-
+    
     DOM.detailsModalContent.innerHTML = `
         <div class="details-modal-header">
             <span class="details-modal-sell-number">출품번호 ${sell_number}</span>
@@ -592,7 +591,7 @@ function showDetailsModal(data) {
             <p>평가점수: ${score || '-'}</p>
         </div>
     `;
-
+    
     DOM.detailsModal.style.display = 'flex';
 }
 

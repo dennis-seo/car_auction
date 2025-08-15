@@ -360,39 +360,42 @@ tbody tr:hover {
     cursor: pointer;
 }
 /*
-
-*/
-/* ionRangeSlider 트랙 색상 변경 *//*
-
-.irs-bar,
-.irs-bar-edge {
-    background: #1976d2 !important;
-}
-
-*/
-/* 슬라이더 핸들(버튼) 색상 및 그림자 *//*
-
-.irs-handle {
-    background: #90caf9 !important;
-    border: 2px solid #1976d2 !important;
-    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
-}
-
-*/
-/* 슬라이더 값 표시 폰트 및 배경 *//*
-
-.irs-from, .irs-to, .irs-single {
-    background: #e3f2fd !important;
-    color: #1976d2 !important;
-    font-weight: bold;
-    border-radius: 8px;
-}
-
-*/
-/* 슬라이더 전체 영역 여백 및 폰트 *//*
-
-.irs {
-    font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
-    font-size: 1.05em;
-    padding: 8px 0;
-}*/
++*/
+/* ionRangeSlider 트랙 색상 변경 */
+/*
++
++.irs-bar,
++.irs-bar-edge {
++    background: #1976d2 !important;
++}
++
++*/
+/* 슬라이더 핸들(버튼) 색상 및 그림자 */
+/*
++
++.irs-handle {
++    background: #90caf9 !important;
++    border: 2px solid #1976d2 !important;
++    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
++}
++
++*/
+/* 슬라이더 값 표시 폰트 및 배경 */
+/*
++
++.irs-from, .irs-to, .irs-single {
++    background: #e3f2fd !important;
++    color: #1976d2 !important;
++    font-weight: bold;
++    border-radius: 8px;
++}
++
++*/
+/* 슬라이더 전체 영역 여백 및 폰트 */
+/*
++
++.irs {
++    font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
++    font-size: 1.05em;
++    padding: 8px 0;
++}*/
