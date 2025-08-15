@@ -34,7 +34,9 @@ export const appState = {
     availableDates: [], // 사용 가능한 날짜(파일명 내 yymmdd) 목록
     activeFilters: {},
     yearMin: null,
-    yearMax: null
+    yearMax: null,
+    // 자유 검색어(차종 제목 검색)
+    searchQuery: ''
 };
 
 /**

@@ -45,10 +45,10 @@ async function loadModelMap() {
 // 한글 브랜드명 -> model.json 키 매핑
 const BRAND_TO_MODEL_KEY = {
     // 국산
-    '현대': 'huyndai', // 주의: 데이터 키 오탈자 반영
+    '현대': 'hyundai', // 주의: 데이터 키 오탈자 반영
     '기아': 'kia',
     '제네시스': 'genesis',
-    '르노삼성': 'renault_samsung',
+    '르노(삼성)': 'renault_samsung',
     '쉐보레(대우)': 'chevrolet_daewoo',
     '쌍용': 'ssangyong',
     '대창모터스': 'daechang_motors',
@@ -109,6 +109,9 @@ const DOM = {
     detailsModalClose: document.querySelector('.details-close'),
     activeFiltersBar: document.getElementById('active-filters'),
     auctionLogoContainer: document.getElementById('auction-logo-container'),
+    mainSearchContainer: document.querySelector('.main-search-container'),
+    searchInput: document.querySelector('.input-area input'),
+    searchButton: document.querySelector('.btn-search-submit button'),
     // 경매장 이름과 로고 이미지 경로 매핑
     logoMap: {
         "현대 경매장": "images/hyundai_glovis.png",
@@ -236,6 +239,27 @@ async function initialize() {
     
     setupBrandDropdown();
     setupModelSelect();
+
+    // 검색 이벤트: 버튼 클릭 및 Enter 입력
+    if (DOM.searchButton) {
+        DOM.searchButton.addEventListener('click', () => applySearchQuery());
+    }
+    if (DOM.searchInput) {
+        DOM.searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applySearchQuery();
+            }
+        });
+        // 입력이 비워지면 즉시 해제
+        DOM.searchInput.addEventListener('input', () => {
+            const val = (DOM.searchInput.value || '').trim();
+            if (val === '' && appState.searchQuery !== '') {
+                appState.searchQuery = '';
+                render();
+            }
+        });
+    }
 }
 
 /**
@@ -258,6 +282,7 @@ function loadDataForDate(date) {
         DOM.carTable.style.display = 'none';
         DOM.messageEl.textContent = '날짜를 선택하면 해당일의 경매 목록을 불러옵니다.';
         DOM.messageEl.style.display = 'block';
+        if (DOM.mainSearchContainer) DOM.mainSearchContainer.style.display = 'none';
         return;
     }
     
@@ -296,6 +321,7 @@ function loadDataForDate(date) {
             DOM.messageEl.textContent = `오류: '${filePath}' 파일을 읽을 수 없습니다. 파일이 정확한 위치에 있는지 확인해주세요.`;
         }
     });
+    if (DOM.mainSearchContainer) DOM.mainSearchContainer.style.display = 'block';
 }
 
 /**
@@ -372,6 +398,10 @@ function render() {
         const modelArr = appState.activeFilters.model || [];
         const modelMatch = modelArr.length === 0
             || (row.title && modelArr.some(val => row.title.includes(val)));
+        // 자유 검색어(차종 제목 내 포함 여부, 대소문자 무시)
+        const query = (appState.searchQuery || '').toLowerCase();
+        const searchMatch = query === ''
+            || (row.title && String(row.title).toLowerCase().includes(query));
         // 연료
         const fuelArr = appState.activeFilters.fuel || [];
         const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
@@ -400,7 +430,7 @@ function render() {
                 return !isNaN(priceValue) && (max === Infinity ? priceValue >= min : (priceValue >= min && priceValue < max));
             });
         }
-        return brandMatch && modelMatch && fuelMatch && kmMatch && priceMatch;
+        return brandMatch && modelMatch && searchMatch && fuelMatch && kmMatch && priceMatch;
     });
     // 정렬 로직 (마지막 필터 기준)
     const priceArr = appState.activeFilters.price || [];
@@ -937,3 +967,11 @@ function onBrandSelected(brandOrNull) {
 
 // --- 앱 실행 ---
 initialize();
+
+// 검색어 적용 함수
+function applySearchQuery() {
+    if (!DOM.searchInput) return;
+    const value = (DOM.searchInput.value || '').trim();
+    appState.searchQuery = value;
+    render();
+}

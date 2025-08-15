@@ -540,6 +540,11 @@ tbody tr:hover {
     box-shadow: 0 4px 10px rgba(25, 118, 210, 0.22);
 }
 
+/* 메인 검색 영역: 경매 날짜 선택 전까지 숨김 */
+.main-search-container {
+    display: none;
+}
+
 /* 반응형 대응 */
 @media (max-width: 860px) {
     .car-select-wrap {
