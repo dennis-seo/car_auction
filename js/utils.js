@@ -36,7 +36,9 @@ export const appState = {
     yearMin: null,
     yearMax: null,
     // 자유 검색어(차종 제목 검색)
-    searchQuery: ''
+    searchQuery: '',
+    // 예산 범위 필터
+    budgetRange: null
 };
 
 /**

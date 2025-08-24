@@ -38,18 +38,37 @@
             </div>
             <div class="main-car-filter">
                 <div class="car-select-wrap">
+                    <!-- 제조사 -->
                     <div class="car-select-box" id="brand-select">
                         <div class="car-select-label">제조사</div>
                     </div>
+                    <!-- 모델 -->
                     <div class="car-select-box disabled" id="model-select">
                         <div class="car-select-label disabled">모델</div>
                     </div>
+                    <!-- 세부 트림 -->
                     <div class="car-select-box disabled" id="submodel-select">
                         <div class="car-select-label disabled">세부모델</div>
                     </div>
+                    <!-- 검색버튼 -->
                     <span class="btn-base tx-white bg-blue70 big radius fr">
                         <button type="button" class="filter-search-btn">검색</button>
                     </span>
+                </div>
+            </div>
+            <!-- 예산 범위 슬라이더 섹션 -->
+            <div class="budget-range-section">
+                <div class="budget-title">
+                    <span class="budget-icon">💰</span>
+                    <h4>예산이 어떻게 되시나요?</h4>
+                </div>
+                <div class="budget-slider-container">
+                    <div class="budget-slider-wrapper">
+                        <input type="text" id="budget-range-slider"/>
+                    </div>
+                    <div class="budget-display">
+                        <span id="budget-range-text">최소~최대 예산 구간 모든 차량</span>
+                    </div>
                 </div>
             </div>
         </div>

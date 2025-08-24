@@ -12,10 +12,15 @@ let cachedBrandList = null;
 async function loadBrandList() {
     if (cachedBrandList) return cachedBrandList;
     try {
-        const res = await fetch('data/brands.json', { cache: 'no-cache' });
-        if (!res.ok) throw new Error(`brands.json fetch failed: ${res.status}`);
+        const res = await fetch('data/search_tree.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
-        cachedBrandList = json;
+        
+        // search_tree.json 구조에서 브랜드 목록 추출
+        const domestic = json.domestic?.map(brand => brand.label) || [];
+        const import_brands = json.import?.map(brand => brand.label) || [];
+        
+        cachedBrandList = { domestic, import: import_brands };
         return cachedBrandList;
     } catch (err) {
         console.error('[브랜드 목록 로드 실패]', err);
@@ -25,74 +30,31 @@ async function loadBrandList() {
     }
 }
 
-// 모델 목록은 외부 JSON에서 지연 로드합니다(캐시 포함)
-let cachedModelMap = null;
-async function loadModelMap() {
-    if (cachedModelMap) return cachedModelMap;
+// 모델 목록은 search_tree.json에서 지연 로드합니다(캐시 포함)
+let cachedSearchTree = null;
+async function loadSearchTree() {
+    if (cachedSearchTree) return cachedSearchTree;
     try {
-        const res = await fetch('data/model.json', { cache: 'no-cache' });
-        if (!res.ok) throw new Error(`model.json fetch failed: ${res.status}`);
+        const res = await fetch('data/search_tree.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
-        cachedModelMap = json;
-        return cachedModelMap;
+        cachedSearchTree = json;
+        return cachedSearchTree;
     } catch (err) {
-        console.error('[모델 목록 로드 실패]', err);
-        cachedModelMap = {};
-        return cachedModelMap;
+        console.error('[검색 트리 로드 실패]', err);
+        cachedSearchTree = { domestic: [], import: [] };
+        return cachedSearchTree;
     }
 }
 
-// 한글 브랜드명 -> model.json 키 매핑
-const BRAND_TO_MODEL_KEY = {
-    // 국산
-    '현대': 'hyundai', // 주의: 데이터 키 오탈자 반영
-    '기아': 'kia',
-    '제네시스': 'genesis',
-    '르노(삼성)': 'renault_samsung',
-    '쉐보레(대우)': 'chevrolet_daewoo',
-    '쌍용': 'ssangyong',
-    '대창모터스': 'daechang_motors',
-    '한국상용트럭': 'korea_truck',
-    '스마트이브이': 'smart_ev',
-    // 수입
-    '벤츠': 'mercedes',
-    'BMW': 'bmw',
-    '아우디': 'audi',
-    '폭스바겐': 'volkswagen',
-    '미니': 'mini',
-    '지프': 'jeep',
-    '랜드로버': 'land_rover',
-    '포드': 'ford',
-    '볼보': 'volvo',
-    '테슬라': 'tesla',
-    '푸조': 'peugeot',
-    '링컨': 'lincoln',
-    '포르쉐': 'porsche',
-    '재규어': 'jaguar',
-    '도요타': 'toyota',
-    '혼다': 'honda',
-    '렉서스': 'lexus',
-    '닛산': 'nissan',
-    '캐딜락': 'cadillac',
-    '인피니티': 'infinity', // 데이터 키 기준
-    '크라이슬러': 'chrysler',
-    '람보르기니': 'lamborghini',
-    '마세라티': 'maserati',
-    '시트로엥': 'citroen',
-    '르노': 'renault',
-    '피아트': 'fiat',
-    '알파로메오': 'alfa_romeo',
-    '지리자동차': 'jerry', // 데이터 키 기준
-    '신위안': 'sinwian',
-    'DS': 'ds',
-    '폴스타': 'polestar',
-    '벤틀리': 'bentley',
-    '롤스로이스': 'rolls_royce',
-    '애스턴마틴': 'aston_martin',
-    '쉐보레': 'chevrolet',
-    '허머': 'hummer',
-    'GMC': 'gmc'
-};
+// 한글 브랜드명에서 해당 브랜드 정보 찾기
+function findBrandByLabel(brandLabel) {
+    if (!cachedSearchTree) return null;
+    
+    // domestic과 import 배열에서 브랜드 찾기
+    const allBrands = [...(cachedSearchTree.domestic || []), ...(cachedSearchTree.import || [])];
+    return allBrands.find(brand => brand.label === brandLabel);
+}
 
 // --- UI 관련 DOM 요소 캐싱 ---
 const DOM = {
@@ -174,6 +136,8 @@ function formatYYMMDDToLabel(input) {
  */
 async function initialize() {
     try {
+        // 검색 트리 데이터 미리 로드
+        await loadSearchTree();
         await fetchAvailableDates();
         populateDateSelector();
     } catch (error) {
@@ -239,6 +203,7 @@ async function initialize() {
     
     setupBrandDropdown();
     setupModelSelect();
+    setupBudgetSlider();
 
     // 검색 이벤트: 버튼 클릭 및 Enter 입력
     if (DOM.searchButton) {
@@ -429,6 +394,15 @@ function render() {
                 const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
                 return !isNaN(priceValue) && (max === Infinity ? priceValue >= min : (priceValue >= min && priceValue < max));
             });
+        }
+        // 예산 필터링
+        if (appState.budgetRange) {
+            const budgetMin = appState.budgetRange.min;
+            const budgetMax = appState.budgetRange.max;
+            const priceValue = parseInt(row.price, 10);
+            if (isNaN(priceValue) || priceValue < budgetMin || (budgetMax !== Infinity && priceValue > budgetMax)) {
+                return false;
+            }
         }
         return brandMatch && modelMatch && searchMatch && fuelMatch && kmMatch && priceMatch;
     });
@@ -644,6 +618,37 @@ function renderActiveFilterPills_multi() {
             bar.appendChild(pill);
         });
     });
+    
+    // 예산 범위 필터 pill 추가
+    if (appState.budgetRange) {
+        const { min, max } = appState.budgetRange;
+        const minLabel = min === 0 ? '0원' : `${min.toLocaleString()}만원`;
+        const maxLabel = max === Infinity ? '1억원이상' : `${max.toLocaleString()}만원`;
+        
+        const pill = document.createElement('span');
+        pill.className = 'filter-pill';
+        pill.innerHTML = `<span class="filter-pill-label">예산</span><span class="filter-pill-value">${minLabel} ~ ${maxLabel}</span>`;
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'filter-pill-remove';
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', '필터 제거');
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = () => {
+            appState.budgetRange = null;
+            // 슬라이더도 초기 상태로 리셋
+            const slider = $('#budget-range-slider').data('ionRangeSlider');
+            if (slider) {
+                slider.reset();
+            }
+            const budgetText = document.getElementById('budget-range-text');
+            if (budgetText) {
+                budgetText.textContent = '최소~최대 예산 구간 모든 차량';
+            }
+            render();
+        };
+        pill.appendChild(closeBtn);
+        bar.appendChild(pill);
+    }
 }
 
 function toggleYearSliderPopup(thElement) {
@@ -810,19 +815,19 @@ async function buildBrandDropdown() {
     const box = document.getElementById('brand-select');
     if (!box) return;
     const current = (appState.activeFilters.title || [])[0] || null;
-    const brandList = await loadBrandList();
+    const searchTree = await loadSearchTree();
     const dropdown = document.createElement('div');
     dropdown.className = 'select-dropdown';
-    if (!brandList || (!brandList.domestic && !brandList.import)) {
+    if (!searchTree || (!searchTree.domestic && !searchTree.import)) {
         dropdown.innerHTML = `<div class="select-dropdown-inner"><div style="padding:14px 16px;color:#8a94a6;">목록을 불러오지 못했습니다.</div></div>`;
     } else {
         dropdown.innerHTML = `
             <div class="select-dropdown-inner">
                 <div class="select-list" role="listbox" aria-label="제조사 선택">
                     <div class="select-group-title">국산</div>
-                    ${(brandList.domestic||[]).map(name => optionTemplate(name, current)).join('')}
+                    ${(searchTree.domestic||[]).map(brand => optionTemplate(brand.label, current)).join('')}
                     <div class="select-group-title">수입</div>
-                    ${(brandList.import||[]).map(name => optionTemplate(name, current)).join('')}
+                    ${(searchTree.import||[]).map(brand => optionTemplate(brand.label, current)).join('')}
                 </div>
             </div>
         `;
@@ -921,9 +926,11 @@ async function buildModelDropdown() {
     if (!box) return;
     const currentBrand = (appState.activeFilters.title || [])[0] || null;
     const currentModel = (appState.activeFilters.model || [])[0] || null;
-    const modelMap = await loadModelMap();
-    const key = currentBrand ? BRAND_TO_MODEL_KEY[currentBrand] : null;
-    const models = key ? (modelMap[key] || []) : [];
+    
+    // search_tree 데이터 로드
+    await loadSearchTree();
+    const brandInfo = findBrandByLabel(currentBrand);
+    const models = brandInfo?.models || [];
 
     const dropdown = document.createElement('div');
     dropdown.className = 'select-dropdown';
@@ -935,7 +942,10 @@ async function buildModelDropdown() {
         dropdown.innerHTML = `
             <div class="select-dropdown-inner">
                 <div class="select-list" role="listbox" aria-label="모델 선택">
-                    ${models.map(name => optionTemplate(name, currentModel)).join('')}
+                    ${models.map(model => {
+                        const modelName = model.label || model.model;
+                        return optionTemplate(modelName, currentModel);
+                    }).join('')}
                 </div>
             </div>
         `;
@@ -963,6 +973,91 @@ function onBrandSelected(brandOrNull) {
     const label = modelBox?.querySelector('.car-select-label');
     if (label) label.textContent = '모델';
     render();
+}
+
+// --- 예산 범위 슬라이더 설정 ---
+function setupBudgetSlider() {
+    const slider = document.getElementById('budget-range-slider');
+    const budgetText = document.getElementById('budget-range-text');
+    
+    if (!slider || !budgetText) return;
+    
+    // 예산 범위 옵션 (1000만원 이하는 200만원 단위)
+    const budgetRanges = [
+        { value: 0, label: '0원' },
+        { value: 200, label: '200만원' },
+        { value: 400, label: '400만원' },
+        { value: 600, label: '600만원' },
+        { value: 800, label: '800만원' },
+        { value: 1000, label: '1,000만원' },
+        { value: 1500, label: '1,500만원' },
+        { value: 2000, label: '2,000만원' },
+        { value: 3000, label: '3,000만원' },
+        { value: 5000, label: '5,000만원' },
+        { value: 10000, label: '1억원이상' }
+    ];
+    
+    // 슬라이더 초기화
+    $(slider).ionRangeSlider({
+        type: 'double',
+        min: 0,
+        max: budgetRanges.length - 1,
+        from: 0,
+        to: budgetRanges.length - 1,
+        grid: false,
+        hide_min_max: true,
+        hide_from_to: false, // 핸들 위 값 표시를 위해 false로 변경
+        prettify: function(num) {
+            return budgetRanges[num].label;
+        },
+        onChange: function(data) {
+            updateBudgetText(data, budgetRanges, budgetText);
+            updateBudgetFilter(data, budgetRanges);
+        },
+        onFinish: function(data) {
+            updateBudgetText(data, budgetRanges, budgetText);
+            updateBudgetFilter(data, budgetRanges);
+        }
+    });
+    
+    // 초기 텍스트 설정
+    const initialData = { from: 0, to: budgetRanges.length - 1 };
+    updateBudgetText(initialData, budgetRanges, budgetText);
+}
+
+function updateBudgetText(data, budgetRanges, textElement) {
+    const fromLabel = budgetRanges[data.from].label;
+    const toLabel = budgetRanges[data.to].label;
+
+    // 새로운 예산 범위 텍스트 규칙
+    if (data.from === 0 && data.to === budgetRanges.length - 1) {
+        textElement.textContent = '최소~최대 예산 구간 모든 차량';
+    } else if (data.from === 0 && data.to < budgetRanges.length - 1) {
+        textElement.textContent = `${toLabel} 까지의 예산 차량`;
+    } else if (data.from > 0 && data.to === budgetRanges.length - 1) {
+        textElement.textContent = `${fromLabel} 이상의 예산 차량`;
+    } else if (data.from === data.to) {
+        textElement.textContent = `${fromLabel} 차량만 보고 싶어요`;
+    } else {
+        textElement.textContent = `${fromLabel} ~ ${toLabel} 구간 차량`;
+    }
+}
+
+function updateBudgetFilter(data, budgetRanges) {
+    const fromValue = budgetRanges[data.from].value;
+    const toValue = budgetRanges[data.to].value;
+    
+    // 전체 범위인 경우 필터 해제
+    if (data.from === 0 && data.to === budgetRanges.length - 1) {
+        appState.budgetRange = null;
+    } else {
+        appState.budgetRange = { min: fromValue, max: toValue === 10000 ? Infinity : toValue };
+    }
+    
+    // 렌더링 업데이트 (데이터가 로드된 경우에만)
+    if (appState.allData && appState.allData.length > 0) {
+        render();
+    }
 }
 
 // --- 앱 실행 ---
