@@ -189,20 +189,48 @@ async function initialize() {
         const isSelectDropdown = e.target.closest('.select-dropdown');
         const isBrandSelect = e.target.closest('#brand-select');
         const isModelSelect = e.target.closest('#model-select');
-        if (isPopup || isHeader || isSelectDropdown || isBrandSelect || isModelSelect) return;
-        document.querySelectorAll('.filter-popup').forEach(popup => {
-            popup.classList.remove('active');
-            popup.addEventListener('transitionend', function onEnd() {
-                popup.removeEventListener('transitionend', onEnd);
-                if (popup.parentNode) popup.parentNode.removeChild(popup);
+        const isSubmodelSelect = e.target.closest('#submodel-select');
+        
+        // 필터 관련 요소나 드롭다운 내부를 클릭한 경우가 아니면 모든 드롭다운 닫기
+        if (!isPopup && !isHeader && !isSelectDropdown && !isBrandSelect && !isModelSelect && !isSubmodelSelect) {
+            // 테이블 헤더의 필터 팝업 닫기
+            document.querySelectorAll('.filter-popup').forEach(popup => {
+                popup.classList.remove('active');
+                popup.addEventListener('transitionend', function onEnd() {
+                    popup.removeEventListener('transitionend', onEnd);
+                    if (popup.parentNode) popup.parentNode.removeChild(popup);
+                });
             });
-        });
-        closeBrandDropdown();
-        closeModelDropdown();
+            
+            // 메인 필터 드롭다운들 닫기
+            closeBrandDropdown();
+            closeModelDropdown();
+            closeSubmodelDropdown();
+        }
+    });
+    
+    // ESC 키를 눌렀을 때 모든 드롭다운과 팝업 닫기
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            // 모든 필터 팝업 닫기
+            document.querySelectorAll('.filter-popup').forEach(popup => {
+                popup.classList.remove('active');
+                popup.addEventListener('transitionend', function onEnd() {
+                    popup.removeEventListener('transitionend', onEnd);
+                    if (popup.parentNode) popup.parentNode.removeChild(popup);
+                });
+            });
+            
+            // 메인 필터 드롭다운들 닫기
+            closeBrandDropdown();
+            closeModelDropdown();
+            closeSubmodelDropdown();
+        }
     });
     
     setupBrandDropdown();
     setupModelSelect();
+    setupSubmodelSelect();
     setupBudgetSlider();
 
     // 검색 이벤트: 버튼 클릭 및 Enter 입력
@@ -223,6 +251,15 @@ async function initialize() {
                 appState.searchQuery = '';
                 render();
             }
+        });
+    }
+    
+    // 필터 검색 버튼 이벤트 추가
+    const filterSearchBtn = document.querySelector('.filter-search-btn');
+    if (filterSearchBtn) {
+        filterSearchBtn.addEventListener('click', () => {
+            // 현재 선택된 필터들로 검색 실행
+            render();
         });
     }
 }
@@ -363,6 +400,20 @@ function render() {
         const modelArr = appState.activeFilters.model || [];
         const modelMatch = modelArr.length === 0
             || (row.title && modelArr.some(val => row.title.includes(val)));
+        // 세부 트림
+        const submodelArr = appState.activeFilters.submodel || [];
+        const submodelMatch = submodelArr.length === 0
+            || (row.title && submodelArr.some(val => {
+                // 선택된 트림명에서 괄호와 괄호 안의 내용 제거
+                const cleanTrimName = val.replace(/\s*\([^)]*\)\s*/g, '').trim();
+                console.log(`[세부트림 필터링] 원본: "${val}" → 정리된 이름: "${cleanTrimName}"`);
+                // 차량 제목에서 괄호 제거된 트림명이 포함되어 있는지 확인
+                const isMatch = row.title.includes(cleanTrimName);
+                if (isMatch) {
+                    console.log(`[세부트림 매칭 성공] 차량: "${row.title}" ↔ 트림: "${cleanTrimName}"`);
+                }
+                return isMatch;
+            }));
         // 자유 검색어(차종 제목 내 포함 여부, 대소문자 무시)
         const query = (appState.searchQuery || '').toLowerCase();
         const searchMatch = query === ''
@@ -404,7 +455,7 @@ function render() {
                 return false;
             }
         }
-        return brandMatch && modelMatch && searchMatch && fuelMatch && kmMatch && priceMatch;
+        return brandMatch && modelMatch && submodelMatch && searchMatch && fuelMatch && kmMatch && priceMatch;
     });
     // 정렬 로직 (마지막 필터 기준)
     const priceArr = appState.activeFilters.price || [];
@@ -468,7 +519,7 @@ function displayTableBody(data) {
 function toggleFilterPopup_multi(thElement, options, filterType) {
     const existingPopup = thElement.querySelector('.filter-popup');
     if (existingPopup) {
-        // 같은 th에 pop이 열려 있다면 트랜지션 닫기
+        // 같은 th에 popup이 열려 있다면 트랜지션 닫기
         existingPopup.classList.remove('active');
         existingPopup.addEventListener('transitionend', function onEnd() {
             existingPopup.removeEventListener('transitionend', onEnd);
@@ -476,8 +527,11 @@ function toggleFilterPopup_multi(thElement, options, filterType) {
         });
         return;
     }
-    // 다른 팝업은 즉시 제거한다.
+    // 다른 팝업과 드롭다운들 즉시 제거한다.
     closeAllPopups();
+    closeBrandDropdown();
+    closeModelDropdown();
+    closeSubmodelDropdown();
 
     const popup = document.createElement('div');
     popup.className = 'filter-popup';
@@ -548,6 +602,7 @@ function updateAndApplyFilters_multi(filterType, value) {
 const FILTER_LABELS = {
     title: '차종',
     model: '모델',
+    submodel: '세부모델',
     fuel: '연료',
     km: '주행거리',
     price: '가격'
@@ -623,7 +678,7 @@ function renderActiveFilterPills_multi() {
     if (appState.budgetRange) {
         const { min, max } = appState.budgetRange;
         const minLabel = min === 0 ? '0원' : `${min.toLocaleString()}만원`;
-        const maxLabel = max === Infinity ? '1억원이상' : `${max.toLocaleString()}만원`;
+        const maxLabel = max === Infinity ? '3,000만원이상' : `${max.toLocaleString()}만원`;
         
         const pill = document.createElement('span');
         pill.className = 'filter-pill';
@@ -662,6 +717,10 @@ function toggleYearSliderPopup(thElement) {
         return;
     }
     closeAllPopups();
+    closeBrandDropdown();
+    closeModelDropdown();
+    closeSubmodelDropdown();
+    
     const popup = document.createElement('div');
     popup.className = 'filter-popup';
     const min = appState.yearMin;
@@ -800,6 +859,11 @@ async function toggleBrandDropdown() {
         closeBrandDropdown();
         return;
     }
+    // 다른 드롭다운들 먼저 닫기
+    closeModelDropdown();
+    closeSubmodelDropdown();
+    closeAllPopups();
+    
     await buildBrandDropdown();
 }
 
@@ -880,6 +944,25 @@ function updateMainFilterLabels() {
             if (lbl) lbl.textContent = currentModel || '모델';
         }
     }
+    // 세부 트림 라벨 + 활성처리
+    const submodelBox = document.getElementById('submodel-select');
+    if (submodelBox) {
+        const currentModel = (appState.activeFilters.model || [])[0] || null;
+        if (!currentModel) {
+            submodelBox.classList.add('disabled');
+            const lbl = submodelBox.querySelector('.car-select-label');
+            if (lbl) {
+                lbl.classList.add('disabled');
+                lbl.textContent = '세부모델';
+            }
+        } else {
+            submodelBox.classList.remove('disabled');
+            const lbl = submodelBox.querySelector('.car-select-label');
+            if (lbl) lbl.classList.remove('disabled');
+            const currentTrim = (appState.activeFilters.submodel || [])[0] || null;
+            if (lbl) lbl.textContent = currentTrim || '세부모델';
+        }
+    }
 }
 
 // --- 모델 선택 UI ---
@@ -910,6 +993,11 @@ async function toggleModelDropdown() {
         closeModelDropdown();
         return;
     }
+    // 다른 드롭다운들 먼저 닫기
+    closeBrandDropdown();
+    closeSubmodelDropdown();
+    closeAllPopups();
+    
     await buildModelDropdown();
 }
 
@@ -954,8 +1042,12 @@ async function buildModelDropdown() {
     dropdown.querySelectorAll('.select-option').forEach(el => {
         el.addEventListener('click', () => {
             const value = el.dataset.value;
-            // 단일 선택으로 동기화
+            // 단일 선택으로 동기화하고 세부트림 초기화
             appState.activeFilters.model = value ? [value] : [];
+            appState.activeFilters.submodel = [];
+            const submodelBox = document.getElementById('submodel-select');
+            const submodelLabel = submodelBox?.querySelector('.car-select-label');
+            if (submodelLabel) submodelLabel.textContent = '세부모델';
             render();
             closeModelDropdown();
         });
@@ -967,12 +1059,112 @@ async function buildModelDropdown() {
 function onBrandSelected(brandOrNull) {
     // 브랜드 변경 적용
     appState.activeFilters.title = brandOrNull ? [brandOrNull] : [];
-    // 브랜드 바뀌면 모델 초기화 및 라벨 초기화
+    // 브랜드 바뀌면 모델과 세부트림 초기화 및 라벨 초기화
     appState.activeFilters.model = [];
+    appState.activeFilters.submodel = [];
     const modelBox = document.getElementById('model-select');
-    const label = modelBox?.querySelector('.car-select-label');
-    if (label) label.textContent = '모델';
+    const modelLabel = modelBox?.querySelector('.car-select-label');
+    if (modelLabel) modelLabel.textContent = '모델';
+    const submodelBox = document.getElementById('submodel-select');
+    const submodelLabel = submodelBox?.querySelector('.car-select-label');
+    if (submodelLabel) submodelLabel.textContent = '세부모델';
     render();
+}
+
+// --- 세부 트림(서브모델) 선택 UI 및 로직 ---
+function setupSubmodelSelect() {
+    const box = document.getElementById('submodel-select');
+    if (!box) return;
+    box.setAttribute('role', 'button');
+    box.setAttribute('tabindex', '0');
+    box.setAttribute('aria-haspopup', 'listbox');
+    box.setAttribute('aria-expanded', 'false');
+    box.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSubmodelDropdown();
+    });
+    box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleSubmodelDropdown();
+        }
+    });
+}
+
+async function toggleSubmodelDropdown() {
+    const box = document.getElementById('submodel-select');
+    if (!box || box.classList.contains('disabled')) return;
+    let dropdown = box.querySelector('.select-dropdown');
+    if (dropdown) { closeSubmodelDropdown(); return; }
+    // 다른 드롭다운들 먼저 닫기
+    closeBrandDropdown();
+    closeModelDropdown();
+    closeAllPopups();
+    
+    await buildSubmodelDropdown();
+}
+
+function closeSubmodelDropdown() {
+    const box = document.getElementById('submodel-select');
+    if (!box) return;
+    const dd = box.querySelector('.select-dropdown');
+    if (dd) dd.remove();
+    box?.setAttribute('aria-expanded', 'false');
+}
+
+async function buildSubmodelDropdown() {
+    const box = document.getElementById('submodel-select');
+    if (!box) return;
+    const currentBrand = (appState.activeFilters.title || [])[0] || null;
+    const currentModel = (appState.activeFilters.model || [])[0] || null;
+    const currentSubmodel = (appState.activeFilters.submodel || [])[0] || null;
+    
+    console.log('[세부트림] 현재 브랜드:', currentBrand, '모델:', currentModel);
+    
+    const searchTree = await loadSearchTree();
+    // 브랜드-모델 매칭
+    const brandInfo = [...(searchTree.domestic || []), ...(searchTree.import || [])].find(b => b.label === currentBrand);
+    console.log('[세부트림] 브랜드 정보:', brandInfo);
+    
+    const modelInfo = brandInfo?.models?.find(m => (m.label || m.model) === currentModel);
+    console.log('[세부트림] 모델 정보:', modelInfo);
+    
+    const trims = modelInfo?.trims || [];
+    console.log('[세부트림] 트림 목록:', trims);
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'select-dropdown';
+    if (!currentModel) {
+        dropdown.innerHTML = `<div class="select-dropdown-inner"><div style="padding:14px 16px;color:#8a94a6;">먼저 모델을 선택하세요.</div></div>`;
+    } else if (!trims || trims.length === 0) {
+        dropdown.innerHTML = `<div class="select-dropdown-inner"><div style="padding:14px 16px;color:#8a94a6;">세부트림 정보가 없습니다.</div></div>`;
+    } else {
+        dropdown.innerHTML = `
+            <div class="select-dropdown-inner">
+                <div class="select-list" role="listbox" aria-label="세부트림 선택">
+                    ${trims.map(trim => {
+                        // trim 객체에서 trim.trim 또는 trim 자체를 사용
+                        const trimName = typeof trim === 'object' ? (trim.trim || trim.label || '') : trim;
+                        const isSelected = currentSubmodel === trimName;
+                        return `<div class="select-option${isSelected ? ' selected' : ''}" role="option" aria-selected="${isSelected}" data-value="${trimName}">${trimName}</div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    dropdown.addEventListener('click', (e) => e.stopPropagation());
+    dropdown.querySelectorAll('.select-option').forEach(el => {
+        el.addEventListener('click', () => {
+            const value = el.dataset.value;
+            console.log('[세부트림] 선택된 값:', value);
+            appState.activeFilters.submodel = value ? [value] : [];
+            render();
+            closeSubmodelDropdown();
+        });
+    });
+    box.appendChild(dropdown);
+    box.setAttribute('aria-expanded', 'true');
+    console.log('[세부트림] 드롭다운 생성 완료');
 }
 
 // --- 예산 범위 슬라이더 설정 ---
@@ -992,9 +1184,8 @@ function setupBudgetSlider() {
         { value: 1000, label: '1,000만원' },
         { value: 1500, label: '1,500만원' },
         { value: 2000, label: '2,000만원' },
-        { value: 3000, label: '3,000만원' },
-        { value: 5000, label: '5,000만원' },
-        { value: 10000, label: '1억원이상' }
+        { value: 2500, label: '2,500만원' },
+        { value: 3000, label: '3,000만원이상' }
     ];
     
     // 슬라이더 초기화
@@ -1051,7 +1242,7 @@ function updateBudgetFilter(data, budgetRanges) {
     if (data.from === 0 && data.to === budgetRanges.length - 1) {
         appState.budgetRange = null;
     } else {
-        appState.budgetRange = { min: fromValue, max: toValue === 10000 ? Infinity : toValue };
+        appState.budgetRange = { min: fromValue, max: toValue === 3000 ? Infinity : toValue };
     }
     
     // 렌더링 업데이트 (데이터가 로드된 경우에만)

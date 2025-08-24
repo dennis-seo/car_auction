@@ -77,8 +77,8 @@ export async function fetchAvailableDates() {
 // --- 데이터 처리 함수 ---
 export function initializeFiltersAndOptions() {
     appState.activeFilters = {
-        // title: 제조사, model: 모델
-        title: [], model: [], price: [], km: [], fuel: [], year: []
+        // title: 제조사, model: 모델, submodel: 세부트림
+        title: [], model: [], submodel: [], price: [], km: [], fuel: [], year: []
     };
     appState.fuelTypes = [...new Set(appState.allData.map(row => row.fuel).filter(Boolean))].sort();
     appState.carBrands = [...new Set(appState.allData.map(row => {
