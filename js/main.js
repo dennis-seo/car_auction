@@ -23,7 +23,6 @@ async function loadBrandList() {
         cachedBrandList = { domestic, import: import_brands };
         return cachedBrandList;
     } catch (err) {
-        console.error('[브랜드 목록 로드 실패]', err);
         // 최소한의 안전한 기본값
         cachedBrandList = { domestic: [], import: [] };
         return cachedBrandList;
@@ -41,7 +40,6 @@ async function loadSearchTree() {
         cachedSearchTree = json;
         return cachedSearchTree;
     } catch (err) {
-        console.error('[검색 트리 로드 실패]', err);
         cachedSearchTree = { domestic: [], import: [] };
         return cachedSearchTree;
     }
@@ -319,7 +317,6 @@ function loadDataForDate(date) {
             }
         },
         error: function(error) {
-            console.error("파일 파싱 오류:", error);
             DOM.messageEl.textContent = `오류: '${filePath}' 파일을 읽을 수 없습니다. 파일이 정확한 위치에 있는지 확인해주세요.`;
         }
     });
@@ -406,12 +403,8 @@ function render() {
             || (row.title && submodelArr.some(val => {
                 // 선택된 트림명에서 괄호와 괄호 안의 내용 제거
                 const cleanTrimName = val.replace(/\s*\([^)]*\)\s*/g, '').trim();
-                console.log(`[세부트림 필터링] 원본: "${val}" → 정리된 이름: "${cleanTrimName}"`);
                 // 차량 제목에서 괄호 제거된 트림명이 포함되어 있는지 확인
                 const isMatch = row.title.includes(cleanTrimName);
-                if (isMatch) {
-                    console.log(`[세부트림 매칭 성공] 차량: "${row.title}" ↔ 트림: "${cleanTrimName}"`);
-                }
                 return isMatch;
             }));
         // 자유 검색어(차종 제목 내 포함 여부, 대소문자 무시)
@@ -473,6 +466,8 @@ function render() {
         filteredData = filteredData.slice().sort((a, b) => (parseInt(a.km, 10) || 0) - (parseInt(b.km, 10) || 0));
     }
     renderActiveFilterPills_multi();
+    console.log('필터링된 데이터 길이:', filteredData.length); // 디버깅용
+    updateCarCount(filteredData.length);
     if (filteredData.length === 0) {
         DOM.tableBody.innerHTML = `<tr><td colspan="${Object.keys(columnMapping).length}" style="padding: 2rem; text-align: center;">검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.</td></tr>`;
     } else {
@@ -706,6 +701,26 @@ function renderActiveFilterPills_multi() {
     }
 }
 
+/**
+ * 현재 필터된 차량 수를 업데이트합니다.
+ */
+function updateCarCount(filteredCount) {
+    console.log('updateCarCount 호출됨:', filteredCount); // 디버깅용
+    const carCountDisplay = document.getElementById('car-count-display');
+    if (carCountDisplay) {
+        if (filteredCount > 0) {
+            const countText = `${filteredCount.toLocaleString('ko-KR')}대 중, `;
+            carCountDisplay.textContent = countText;
+            console.log('차량 수 업데이트됨:', countText); // 디버깅용
+        } else {
+            carCountDisplay.textContent = '';
+            console.log('차량 수 0으로 설정됨'); // 디버깅용
+        }
+    } else {
+        console.error('car-count-display 요소를 찾을 수 없습니다'); // 디버깅용
+    }
+}
+
 function toggleYearSliderPopup(thElement) {
     const existingPopup = thElement.querySelector('.filter-popup');
     if (existingPopup) {
@@ -729,10 +744,6 @@ function toggleYearSliderPopup(thElement) {
     if (Array.isArray(appState.activeFilters.year) && appState.activeFilters.year.length === 2) {
         curMin = appState.activeFilters.year[0];
         curMax = appState.activeFilters.year[1];
-    }
-    console.log('[연식 슬라이더 생성]', 'min:', min, 'max:', max, 'curMin:', curMin, 'curMax:', curMax);
-    if (isNaN(min) || isNaN(max) || isNaN(curMin) || isNaN(curMax)) {
-        console.warn('[경고] 연식 슬라이더 값이 비정상(min, max, from, to). 데이터를 확인하세요');
     }
     popup.innerHTML = `
         <div style='padding: 14px 18px 15px 18px; min-width:230px;'>
@@ -1119,18 +1130,13 @@ async function buildSubmodelDropdown() {
     const currentModel = (appState.activeFilters.model || [])[0] || null;
     const currentSubmodel = (appState.activeFilters.submodel || [])[0] || null;
     
-    console.log('[세부트림] 현재 브랜드:', currentBrand, '모델:', currentModel);
-    
     const searchTree = await loadSearchTree();
     // 브랜드-모델 매칭
     const brandInfo = [...(searchTree.domestic || []), ...(searchTree.import || [])].find(b => b.label === currentBrand);
-    console.log('[세부트림] 브랜드 정보:', brandInfo);
     
     const modelInfo = brandInfo?.models?.find(m => (m.label || m.model) === currentModel);
-    console.log('[세부트림] 모델 정보:', modelInfo);
     
     const trims = modelInfo?.trims || [];
-    console.log('[세부트림] 트림 목록:', trims);
     
     const dropdown = document.createElement('div');
     dropdown.className = 'select-dropdown';
@@ -1156,7 +1162,6 @@ async function buildSubmodelDropdown() {
     dropdown.querySelectorAll('.select-option').forEach(el => {
         el.addEventListener('click', () => {
             const value = el.dataset.value;
-            console.log('[세부트림] 선택된 값:', value);
             appState.activeFilters.submodel = value ? [value] : [];
             render();
             closeSubmodelDropdown();
@@ -1164,7 +1169,6 @@ async function buildSubmodelDropdown() {
     });
     box.appendChild(dropdown);
     box.setAttribute('aria-expanded', 'true');
-    console.log('[세부트림] 드롭다운 생성 완료');
 }
 
 // --- 예산 범위 슬라이더 설정 ---
