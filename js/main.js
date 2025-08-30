@@ -140,7 +140,7 @@ async function initialize() {
         populateDateSelector();
     } catch (error) {
         DOM.messageEl.textContent = '경매 날짜 목록을 불러오는 데 실패했습니다.';
-        console.error(error);
+        
     }
     
     DOM.dateSelector.addEventListener('change', (e) => loadDataForDate(e.target.value));
@@ -181,6 +181,17 @@ async function initialize() {
         if (e.target === DOM.detailsModal) hideDetailsModal();
     };
     
+    const carGallery = document.getElementById('car-list-gallery');
+    if (carGallery) {
+        carGallery.addEventListener('click', (e) => {
+            const clickedImage = e.target.closest('.car-list-card-image');
+            if (clickedImage && clickedImage.src && !clickedImage.src.includes('no_car_image.png')) {
+                e.stopPropagation();
+                showImageModal(clickedImage.src);
+            }
+        });
+    }
+    
     window.addEventListener('click', (e) => {
         const isPopup = e.target.closest('.filter-popup');
         const isHeader = e.target.closest('.filterable-header');
@@ -199,8 +210,6 @@ async function initialize() {
                     if (popup.parentNode) popup.parentNode.removeChild(popup);
                 });
             });
-            
-            // 메인 필터 드롭다운들 닫기
             closeBrandDropdown();
             closeModelDropdown();
             closeSubmodelDropdown();
@@ -218,8 +227,6 @@ async function initialize() {
                     if (popup.parentNode) popup.parentNode.removeChild(popup);
                 });
             });
-            
-            // 메인 필터 드롭다운들 닫기
             closeBrandDropdown();
             closeModelDropdown();
             closeSubmodelDropdown();
@@ -229,6 +236,7 @@ async function initialize() {
     setupBrandDropdown();
     setupModelSelect();
     setupSubmodelSelect();
+    setupFuelTypeButtons();
     setupBudgetSlider();
 
     // 검색 이벤트: 버튼 클릭 및 Enter 입력
@@ -309,7 +317,7 @@ function loadDataForDate(date) {
                 updateAuctionTitle(yymmdd);
                 renderAuctionLogos();
                 render();
-                
+                buildFuelTypeButtons();
                 DOM.messageEl.style.display = 'none';
                 DOM.carTable.style.display = 'table';
             } else {
@@ -392,7 +400,7 @@ function render() {
         // 제조사(차종)
         const titleArr = appState.activeFilters.title || [];
         const brandMatch = titleArr.length === 0
-            || (row.title && titleArr.some(val => row.title.includes(`[${val}]`)));
+            || (row.title && titleArr.some(val => row.title.includes(val)));
         // 모델
         const modelArr = appState.activeFilters.model || [];
         const modelMatch = modelArr.length === 0
@@ -413,7 +421,25 @@ function render() {
             || (row.title && String(row.title).toLowerCase().includes(query));
         // 연료
         const fuelArr = appState.activeFilters.fuel || [];
-        const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
+        const fuelMatch = fuelArr.length === 0 || fuelArr.some(selectedFuel => {
+            if (selectedFuel === '하이브리드') {
+                // 하이브리드 선택 시 "하이브리드" 또는 "가솔린하이브리드"를 포함
+                return row.fuel === '하이브리드' || row.fuel === '가솔린하이브리드';
+            } else if (selectedFuel === '가솔린') {
+                // 가솔린 선택 시 "가솔린" 또는 "휘발유"를 포함
+                return row.fuel === '가솔린' || row.fuel === '휘발유';
+            } else if (selectedFuel === '휘발유') {
+                // 휘발유 선택 시 "가솔린" 또는 "휘발유"를 포함
+                return row.fuel === '가솔린' || row.fuel === '휘발유';
+            } else if (selectedFuel === '디젤') {
+                // 디젤 선택 시 "디젤" 또는 "경유"를 포함
+                return row.fuel === '디젤' || row.fuel === '경유';
+            } else if (selectedFuel === '경유') {
+                // 경유 선택 시 "디젤" 또는 "경유"를 포함
+                return row.fuel === '디젤' || row.fuel === '경유';
+            }
+            return row.fuel === selectedFuel;
+        });
         // 주행거리
         let kmArr = appState.activeFilters.km || [];
         let kmMatch = true;
@@ -464,10 +490,13 @@ function render() {
         filteredData = filteredData.slice().sort((a, b) => (parseInt(a.price, 10) || 0) - (parseInt(b.price, 10) || 0));
     } else if (kmArr.length > 0) {
         filteredData = filteredData.slice().sort((a, b) => (parseInt(a.km, 10) || 0) - (parseInt(b.km, 10) || 0));
+    } else if (appState.budgetRange) {
+        // 예산 필터가 적용된 경우 가격 낮은 순으로 정렬
+        filteredData = filteredData.slice().sort((a, b) => (parseInt(a.price, 10) || 0) - (parseInt(b.price, 10) || 0));
     }
     renderActiveFilterPills_multi();
-    console.log('필터링된 데이터 길이:', filteredData.length); // 디버깅용
     updateCarCount(filteredData.length);
+    updateFuelTypeButtons();
     if (filteredData.length === 0) {
         DOM.tableBody.innerHTML = `<tr><td colspan="${Object.keys(columnMapping).length}" style="padding: 2rem; text-align: center;">검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.</td></tr>`;
     } else {
@@ -501,7 +530,6 @@ function renderCarGalleryCardList(filteredData) {
         if (row.region)      infoArr.push(row.region);
         const meta = infoArr.join('  |  ');
 
-        // Extra actions (관심차량 / 비교 등은 아이콘 또는 텍스트 대체)
         return `<div class="car-list-item-card">
             <img class="car-list-card-image" src="${imgUrl}" onerror="this.src='images/no_car_image.png'" alt="차량 이미지">
             <div class="car-list-card-details">
@@ -509,10 +537,6 @@ function renderCarGalleryCardList(filteredData) {
                 ${subtitle ? `<div class="car-list-card-subtitle">${subtitle}</div>` : ''}
                 <div class="car-list-card-title">${title}</div>
                 <div class="car-list-card-meta">${meta}</div>
-                <div class="car-list-card-actions">
-                    <button class="car-list-card-action" tabindex="-1" aria-label="관심차량"><span class="icon">&#9825;</span>관심차량</button>
-                    <button class="car-list-card-action" tabindex="-1" aria-label="차량비교"><span class="icon">VS</span>차량비교</button>
-                </div>
             </div>
             <div class="car-list-card-price">
                 ${price}<span class="car-list-card-price-label">만원</span>
@@ -570,7 +594,25 @@ function toggleFilterPopup_multi(thElement, options, filterType) {
     closeBrandDropdown();
     closeModelDropdown();
     closeSubmodelDropdown();
-
+    
+    // 오토허브 경매장인지 확인
+    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
+    const isAutoHub = uniqueAuctionNames.some(name => name.includes('오토허브'));
+    
+    // 사용이력 항목별 아이콘 매핑
+    const usageHistoryIcons = {
+        '자가용': '🏠',
+        '렌트카': '🚗',
+        '업무용': '💼',
+        '리스': '📋',
+        '법인': '🏢',
+        '택시': '🚕',
+        '관용': '🏛️',
+        '영업용': '💰',
+        '화물': '🚛',
+        '기타': '❓'
+    };
+    
     const popup = document.createElement('div');
     popup.className = 'filter-popup';
     // 전체 옵션
@@ -581,11 +623,20 @@ function toggleFilterPopup_multi(thElement, options, filterType) {
         updateAndApplyFilters_multi(filterType, 'all');
     };
     popup.appendChild(allOption);
+    
     // 이하 직접 값들(체크/선택 표시)
     options.forEach(optionValue => {
         const option = document.createElement('a');
         option.className = 'filter-option';
-        option.textContent = optionValue;
+        
+        // 오토허브 경매장이고 연료(사용이력) 필터인 경우 아이콘 추가
+        if (isAutoHub && filterType === 'fuel') {
+            const icon = usageHistoryIcons[optionValue] || usageHistoryIcons['기타'];
+            option.innerHTML = `<span class="filter-option-icon">${icon}</span> ${optionValue}`;
+        } else {
+            option.textContent = optionValue;
+        }
+        
         // 선택표시:
         if ((appState.activeFilters[filterType] || []).includes(optionValue)) {
             option.style.fontWeight = 'bold';
@@ -641,7 +692,7 @@ const FILTER_LABELS = {
     title: '차종',
     model: '모델',
     submodel: '세부모델',
-    fuel: '연료',
+    fuel: () => getFuelLabel(), 
     km: '주행거리',
     price: '가격'
 };
@@ -655,6 +706,28 @@ if (!('lastSortedFilter' in appState)) appState.lastSortedFilter = null;
 function renderActiveFilterPills_multi() {
     const bar = DOM.activeFiltersBar;
     bar.innerHTML = '';
+    
+    // 검색어 필터 pill 추가
+    if (appState.searchQuery && appState.searchQuery.trim() !== '') {
+        const pill = document.createElement('span');
+        pill.className = 'filter-pill';
+        pill.innerHTML = `<span class="filter-pill-label">검색어</span><span class="filter-pill-value">${appState.searchQuery}</span>`;
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'filter-pill-remove';
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', '필터 제거');
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = () => {
+            appState.searchQuery = '';
+            if (DOM.searchInput) {
+                DOM.searchInput.value = '';
+            }
+            render();
+        };
+        pill.appendChild(closeBtn);
+        bar.appendChild(pill);
+    }
+    
     Object.keys(appState.activeFilters).forEach(key => {
         if(key === 'year') {
             const v = appState.activeFilters.year;
@@ -681,7 +754,11 @@ function renderActiveFilterPills_multi() {
         values.forEach(val => {
             const pill = document.createElement('span');
             pill.className = 'filter-pill';
-            pill.innerHTML = `<span class="filter-pill-label">${FILTER_LABELS[key]}</span><span class="filter-pill-value">${val}</span>`;
+            // 라벨이 함수인 경우 호출하여 값을 가져옴
+            const labelText = typeof FILTER_LABELS[key] === 'function' ? FILTER_LABELS[key]() : FILTER_LABELS[key];
+            // 연료 필터의 경우 "가솔린하이브리드"를 "하이브리드"로 표시
+            const displayValue = (key === 'fuel' && val === '가솔린하이브리드') ? '하이브리드' : val;
+            pill.innerHTML = `<span class="filter-pill-label">${labelText}</span><span class="filter-pill-value">${displayValue}</span>`;
             const closeBtn = document.createElement('button');
             closeBtn.className = 'filter-pill-remove';
             closeBtn.type = 'button';
@@ -748,19 +825,16 @@ function renderActiveFilterPills_multi() {
  * 현재 필터된 차량 수를 업데이트합니다.
  */
 function updateCarCount(filteredCount) {
-    console.log('updateCarCount 호출됨:', filteredCount); // 디버깅용
     const carCountDisplay = document.getElementById('car-count-display');
     if (carCountDisplay) {
         if (filteredCount > 0) {
-            const countText = `${filteredCount.toLocaleString('ko-KR')}대 중, `;
+            const countText = `${filteredCount.toLocaleString('ko-KR')}대, `;
             carCountDisplay.textContent = countText;
-            console.log('차량 수 업데이트됨:', countText); // 디버깅용
         } else {
             carCountDisplay.textContent = '';
-            console.log('차량 수 0으로 설정됨'); // 디버깅용
         }
     } else {
-        console.error('car-count-display 요소를 찾을 수 없습니다'); // 디버깅용
+        
     }
 }
 
@@ -856,7 +930,9 @@ function updateAuctionTitle(date) {
     const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
     
     if (uniqueAuctionNames.length > 0) {
-        h1Element.textContent = `차량 경매 정보 (${uniqueAuctionNames.join(', ')})`;
+        h1Element.innerHTML = `차량 경매 정보<br><span class="auction-subtitle">(${uniqueAuctionNames.join(', ')})</span>`;
+    } else {
+        h1Element.innerHTML = '차량 경매 정보';
     }
 }
 
@@ -1214,6 +1290,330 @@ async function buildSubmodelDropdown() {
     box.setAttribute('aria-expanded', 'true');
 }
 
+// --- 연료 선택 UI 및 로직 ---
+function setupFuelTypeButtons() {
+    // 이 함수는 초기 설정만 담당하고, 실제 버튼 생성은 데이터 로드 후에 수행
+}
+
+function buildFuelTypeButtons() {
+    const container = document.getElementById('fuel-type-buttons');
+    const titleElement = document.getElementById('fuel-selection-title');
+    if (!container || !appState.fuelTypes) return;
+
+    // 오토허브 경매장인지 확인
+    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
+    const isAutoHub = uniqueAuctionNames.some(name => name.includes('오토허브'));
+
+    // 제목 업데이트
+    if (titleElement) {
+        titleElement.textContent = getFuelLabel();
+    }
+
+    // 기존 버튼들 제거
+    container.innerHTML = '';
+
+    if (isAutoHub) {
+        // 오토허브 경매장의 사용이력 아이콘 매핑
+        const usageHistoryIcons = {
+            '자가용': '🏠',
+            '렌트카': '🚗',
+            '업무용': '💼',
+            '리스': '📋',
+            '법인': '🏢',
+            '택시': '🚕',
+            '관용': '🏛️',
+            '영업용': '💰',
+            '화물': '🚛',
+            '기타': '❓'
+        };
+
+        // "전체" 버튼 추가
+        const allButton = document.createElement('div');
+        allButton.className = 'fuel-type-button';
+        allButton.innerHTML = `
+            <div class="fuel-type-icon">🎯</div>
+            <div>전체</div>
+        `;
+        allButton.onclick = () => {
+            appState.activeFilters.fuel = [];
+            updateFuelTypeButtons();
+            render();
+        };
+        container.appendChild(allButton);
+
+        // 사용이력 타입 버튼 생성
+        appState.fuelTypes.forEach(usageType => {
+            const button = document.createElement('div');
+            button.className = 'fuel-type-button';
+            button.dataset.fuelType = usageType;
+
+            const icon = usageHistoryIcons[usageType] || usageHistoryIcons['기타'];
+            button.innerHTML = `
+                <div class="fuel-type-icon">${icon}</div>
+                <div>${usageType}</div>
+            `;
+
+            button.onclick = () => {
+                const currentFuels = appState.activeFilters.fuel || [];
+                const isSelected = currentFuels.includes(usageType);
+                
+                if (isSelected) {
+                    // 이미 선택된 사용이력을 다시 클릭하면 제거
+                    appState.activeFilters.fuel = currentFuels.filter(fuel => fuel !== usageType);
+                } else {
+                    // 새로운 사용이력 추가 (중복 제거)
+                    appState.activeFilters.fuel = [...new Set([...currentFuels, usageType])];
+                }
+
+                updateFuelTypeButtons();
+                render();
+            };
+
+            container.appendChild(button);
+        });
+    } else {
+        // 일반 경매장의 연료 타입 처리
+        // 정의된 연료 타입들
+        const definedFuelTypes = ['가솔린', '휘발유', '디젤', '경유', '하이브리드', 'LPG', '전기'];
+
+        // 연료 타입별 아이콘 매핑
+        const fuelIcons = {
+            '휘발유': '⛽',
+            '경유': '🚛',
+            '하이브리드': '🔋',
+            'LPG': '💨',
+            '전기': '🔌',
+            '기타': '🚗'
+        };
+
+        // "가솔린하이브리드"를 "하이브리드"로 통합 처리
+        const processedFuelTypes = appState.fuelTypes.map(fuel => 
+            fuel === '가솔린하이브리드' ? '하이브리드' : fuel
+        );
+        const uniqueFuelTypes = [...new Set(processedFuelTypes)];
+
+        const categorizedFuelTypes = [];
+
+        definedFuelTypes.forEach(fuelType => {
+            if (uniqueFuelTypes.includes(fuelType)) {
+                categorizedFuelTypes.push(fuelType);
+            }
+        });
+
+        // 정의되지 않은 연료 타입들이 있는지 확인
+        // 가솔린하이브리드는 하이브리드로 통합되므로 기타에서 제외
+        const otherFuelTypes = appState.fuelTypes.filter(fuel => {
+            if (fuel === '가솔린하이브리드') return false; // 하이브리드로 통합
+            return !definedFuelTypes.includes(fuel);
+        });
+        if (otherFuelTypes.length > 0) {
+            categorizedFuelTypes.push('기타');
+        }
+
+        // "전체" 버튼 추가
+        const allButton = document.createElement('div');
+        allButton.className = 'fuel-type-button';
+        allButton.innerHTML = `
+            <div class="fuel-type-icon">🎯</div>
+            <div>전체</div>
+        `;
+        allButton.onclick = () => {
+            appState.activeFilters.fuel = [];
+            updateFuelTypeButtons();
+            render();
+        };
+        container.appendChild(allButton);
+
+        // 분류된 연료 타입 버튼 생성
+        categorizedFuelTypes.forEach(fuelType => {
+            const button = document.createElement('div');
+            button.className = 'fuel-type-button';
+
+            if (fuelType === '기타') {
+                button.dataset.fuelType = 'others';
+                button.dataset.otherTypes = JSON.stringify(otherFuelTypes);
+            } else {
+                button.dataset.fuelType = fuelType;
+            }
+
+            const icon = fuelIcons[fuelType];
+            button.innerHTML = `
+                <div class="fuel-type-icon">${icon}</div>
+                <div>${fuelType}</div>
+            `;
+
+            button.onclick = () => {
+                const currentFuels = appState.activeFilters.fuel || [];
+
+                if (fuelType === '기타') {
+                    // 기타 버튼 클릭 시 정의되지 않은 연료 타입들 처리
+                    const currentOtherFuels = currentFuels.filter(fuel => otherFuelTypes.includes(fuel));
+                    if (currentOtherFuels.length > 0) {
+                        // 이미 기타 연료가 선택된 경우 기타 연료들 제거
+                        appState.activeFilters.fuel = currentFuels.filter(fuel => !otherFuelTypes.includes(fuel));
+                    } else {
+                        // 기타 연료들 추가 (정의되지 않은 연료 타입들)
+                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...otherFuelTypes])];
+                    }
+                } else if (fuelType === '하이브리드') {
+                    // 하이브리드 버튼 클릭 시 "하이브리드"와 "가솔린하이브리드" 모두 고려
+                    const hybridTypes = appState.fuelTypes.filter(fuel => 
+                        fuel === '하이브리드' || fuel === '가솔린하이브리드'
+                    );
+                    const isHybridSelected = currentFuels.some(fuel => hybridTypes.includes(fuel));
+                    
+                    if (isHybridSelected) {
+                        // 하이브리드 관련 필터 제거
+                        appState.activeFilters.fuel = currentFuels.filter(fuel => 
+                            !hybridTypes.includes(fuel)
+                        );
+                    } else {
+                        // 하이브리드 필터 추가 (실제 데이터에 있는 타입들을 포함)
+                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...hybridTypes])];
+                    }
+                } else if (fuelType === '가솔린' || fuelType === '휘발유') {
+                    // 가솔린/휘발유 버튼 클릭 시 두 타입 모두 고려
+                    const gasolineTypes = appState.fuelTypes.filter(fuel => 
+                        fuel === '가솔린' || fuel === '휘발유'
+                    );
+                    const isGasolineSelected = currentFuels.some(fuel => gasolineTypes.includes(fuel));
+                    
+                    if (isGasolineSelected) {
+                        // 가솔린/휘발유 관련 필터 제거
+                        appState.activeFilters.fuel = currentFuels.filter(fuel => 
+                            !gasolineTypes.includes(fuel)
+                        );
+                    } else {
+                        // 가솔린/휘발유 필터 추가 (실제 데이터에 있는 타입들을 포함)
+                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...gasolineTypes])];
+                    }
+                } else if (fuelType === '디젤' || fuelType === '경유') {
+                    // 디젤/경유 버튼 클릭 시 두 타입 모두 고려
+                    const dieselTypes = appState.fuelTypes.filter(fuel => 
+                        fuel === '디젤' || fuel === '경유'
+                    );
+                    const isDieselSelected = currentFuels.some(fuel => dieselTypes.includes(fuel));
+                    
+                    if (isDieselSelected) {
+                        // 디젤/경유 관련 필터 제거
+                        appState.activeFilters.fuel = currentFuels.filter(fuel => 
+                            !dieselTypes.includes(fuel)
+                        );
+                    } else {
+                        // 디젤/경유 필터 추가 (실제 데이터에 있는 타입들을 포함)
+                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...dieselTypes])];
+                    }
+                } else {
+                    // 일반 연료 버튼 클릭
+                    const isSelected = currentFuels.includes(fuelType);
+                    if (isSelected) {
+                        // 이미 선택된 연료를 다시 클릭하면 제거
+                        appState.activeFilters.fuel = currentFuels.filter(fuel => fuel !== fuelType);
+                    } else {
+                        // 새로운 연료 추가 (중복 선택 가능)
+                        appState.activeFilters.fuel = [...new Set([...currentFuels, fuelType])];
+                    }
+                }
+
+                updateFuelTypeButtons();
+                render();
+            };
+
+            container.appendChild(button);
+        });
+    }
+
+    // 초기 상태 업데이트
+    updateFuelTypeButtons();
+}
+
+function updateFuelTypeButtons() {
+    const container = document.getElementById('fuel-type-buttons');
+    if (!container) return;
+    
+    // 오토허브 경매장인지 확인
+    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
+    const isAutoHub = uniqueAuctionNames.some(name => name.includes('오토허브'));
+    
+    const currentFuels = appState.activeFilters.fuel || [];
+    
+    // 모든 버튼에서 selected 클래스 제거
+    container.querySelectorAll('.fuel-type-button').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    if (currentFuels.length === 0) {
+        // 전체 버튼 선택
+        const allButton = container.querySelector('.fuel-type-button:first-child');
+        if (allButton) {
+            allButton.classList.add('selected');
+        }
+    } else {
+        if (isAutoHub) {
+            // 오토허브 경매장의 사용이력 버튼 처리
+            currentFuels.forEach(selectedUsage => {
+                const selectedButton = container.querySelector(`[data-fuel-type="${selectedUsage}"]`);
+                if (selectedButton) {
+                    selectedButton.classList.add('selected');
+                }
+            });
+        } else {
+            // 일반 경매장의 연료 타입 버튼 처리
+            const definedFuelTypes = ['가솔린', '휘발유', '디젤', '경유', '하이브리드', 'LPG', '전기'];
+            
+            // 하이브리드 관련 처리
+            const isHybridSelected = currentFuels.includes('하이브리드') || currentFuels.includes('가솔린하이브리드');
+            if (isHybridSelected) {
+                const hybridButton = container.querySelector('[data-fuel-type="하이브리드"]');
+                if (hybridButton) {
+                    hybridButton.classList.add('selected');
+                }
+            }
+
+            // 가솔린/휘발유 관련 처리
+            const isGasolineSelected = currentFuels.includes('가솔린') || currentFuels.includes('휘발유');
+            if (isGasolineSelected) {
+                const gasolineButton = container.querySelector('[data-fuel-type="가솔린"]');
+                const gasolineButton2 = container.querySelector('[data-fuel-type="휘발유"]');
+                if (gasolineButton) gasolineButton.classList.add('selected');
+                if (gasolineButton2) gasolineButton2.classList.add('selected');
+            }
+
+            // 디젤/경유 관련 처리
+            const isDieselSelected = currentFuels.includes('디젤') || currentFuels.includes('경유');
+            if (isDieselSelected) {
+                const dieselButton = container.querySelector('[data-fuel-type="디젤"]');
+                const dieselButton2 = container.querySelector('[data-fuel-type="경유"]');
+                if (dieselButton) dieselButton.classList.add('selected');
+                if (dieselButton2) dieselButton2.classList.add('selected');
+            }
+
+            // 다른 정의된 연료 타입들 처리
+            definedFuelTypes.forEach(fuelType => {
+                if (['하이브리드', '가솔린', '휘발유', '디젤', '경유'].includes(fuelType)) return; // 이미 위에서 처리함
+
+                if (currentFuels.includes(fuelType)) {
+                    const selectedButton = container.querySelector(`[data-fuel-type="${fuelType}"]`);
+                    if (selectedButton) {
+                        selectedButton.classList.add('selected');
+                    }
+                }
+            });
+
+            // 기타 연료들이 선택된 경우
+            const otherButton = container.querySelector('[data-fuel-type="others"]');
+            if (otherButton) {
+                const otherTypes = JSON.parse(otherButton.dataset.otherTypes || '[]');
+                // 현재 선택된 연료 중 기타 연료가 있는지 확인
+                const hasOtherSelected = currentFuels.some(fuel => otherTypes.includes(fuel));
+                if (hasOtherSelected) {
+                    otherButton.classList.add('selected');
+                }
+            }
+        }
+    }
+}
+
 // --- 예산 범위 슬라이더 설정 ---
 function setupBudgetSlider() {
     const slider = document.getElementById('budget-range-slider');
@@ -1296,6 +1696,21 @@ function updateBudgetFilter(data, budgetRanges) {
     if (appState.allData && appState.allData.length > 0) {
         render();
     }
+}
+
+// --- 경매장별 연료 라벨 가져오기 함수 ---
+function getFuelLabel() {
+    if (!appState.allData || appState.allData.length === 0) return '연료';
+    
+    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
+    
+    // 오토허브 경매장이 포함된 경우 "사용이력" 사용
+    if (uniqueAuctionNames.some(name => name.includes('오토허브'))) {
+        return '사용이력';
+    }
+    
+    // 그 외에는 "연료" 사용
+    return '연료';
 }
 
 // --- 앱 실행 ---
