@@ -478,9 +478,52 @@ function render() {
     } else {
         displayTableBody(filteredData);
     }
+    renderCarGalleryCardList(filteredData);
     DOM.carTable.style.display = 'table';
     // 메인 필터 라벨 동기화(브랜드)
     updateMainFilterLabels();
+}
+
+function renderCarGalleryCardList(filteredData) {
+    const gallery = document.getElementById('car-list-gallery');
+    if (!gallery) return;
+
+    if (!filteredData || filteredData.length === 0) {
+        gallery.innerHTML = '';
+        return;
+    }
+
+    gallery.innerHTML = filteredData.map(row => {
+        const imgUrl = row.image || '';
+        const price = row.price ? parseInt(row.price, 10).toLocaleString('ko-KR') : '-';
+        const title = row.title || '-';
+        const auctionName = row.auction_name || '';
+        const subtitle = row.subtitle || '';
+        const infoArr = [];
+        if (row.year)        infoArr.push(row.year);
+        if (row.km)          infoArr.push(`${parseInt(row.km,10).toLocaleString()}km`);
+        if (row.fuel)        infoArr.push(row.fuel);
+        if (row.region)      infoArr.push(row.region);
+        const meta = infoArr.join('  |  ');
+
+        // Extra actions (관심차량 / 비교 등은 아이콘 또는 텍스트 대체)
+        return `<div class="car-list-item-card">
+            <img class="car-list-card-image" src="${imgUrl}" onerror="this.src='images/no_car_image.png'" alt="차량 이미지">
+            <div class="car-list-card-details">
+                ${auctionName ? `<div class="car-list-card-auction">${auctionName}</div>` : ''}
+                ${subtitle ? `<div class="car-list-card-subtitle">${subtitle}</div>` : ''}
+                <div class="car-list-card-title">${title}</div>
+                <div class="car-list-card-meta">${meta}</div>
+                <div class="car-list-card-actions">
+                    <button class="car-list-card-action" tabindex="-1" aria-label="관심차량"><span class="icon">&#9825;</span>관심차량</button>
+                    <button class="car-list-card-action" tabindex="-1" aria-label="차량비교"><span class="icon">VS</span>차량비교</button>
+                </div>
+            </div>
+            <div class="car-list-card-price">
+                ${price}<span class="car-list-card-price-label">만원</span>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 /**

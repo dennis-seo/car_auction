@@ -728,7 +728,7 @@ tbody tr:hover {
 
 .budget-slider-wrapper {
     margin-bottom: 16px;
-    padding-top: 16px;
+    padding-top: 8px;
 }
 
 .budget-display {
@@ -856,5 +856,132 @@ tbody tr:hover {
         font-size: 12px !important;
         padding: 6px 10px !important;
         min-width: 50px !important;
+    }
+}
+
+/* 차량 이미지 리스트 갤러리 영역 */
+.car-list-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-bottom: 22px;
+    margin-top: 10px;
+}
+.car-list-item-card {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 6px 22px rgba(33, 75, 166, 0.12);
+    padding: 18px 18px 18px 24px;
+    transition: box-shadow 0.2s, transform 0.08s;
+    border: 1px solid #edf1f7;
+    cursor: pointer;
+    position: relative;
+}
+.car-list-item-card:hover {
+    box-shadow: 0 8px 36px rgba(25, 118, 210, 0.14);
+    transform: translateY(-1.5px) scale(1.013);
+}
+.car-list-card-image {
+    width: 160px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(41,105,190,0.11);
+    background: #e6e9ee;
+    margin-right: 28px;
+    flex-shrink: 0;
+}
+.car-list-card-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.car-list-card-title {
+    font-size: 1.33rem;
+    font-weight: 800;
+    margin: 5px 0 6px 0;
+    color: #222e39;
+    white-space: normal;
+    word-break: break-word;
+}
+.car-list-card-subtitle {
+    font-size: 1rem;
+    color: #3c6ed5;
+    font-weight: 500;
+    margin-bottom: 5px;
+    white-space: normal;
+}
+.car-list-card-meta {
+    color: #69708a;
+    font-size: 0.87rem;
+    margin-bottom: 8px;
+}
+.car-list-card-auction {
+    padding: 3px 10px;
+    border-radius: 7px;
+    background: #f2f6fa;
+    color: #1565c0;
+    font-weight: 600;
+    font-size: 0.98rem;
+    margin-bottom: 5px;
+    display: inline-block;
+}
+.car-list-card-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 9px;
+    align-items: center;
+}
+.car-list-card-action {
+    color: #868888;
+    font-size: 1.07rem;
+    padding: 2px 10px;
+    background: #f9f9fc;
+    border-radius: 7px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border: none;
+    cursor: pointer;
+}
+.car-list-card-action .icon {
+    font-size: 1.25em;
+}
+.car-list-card-price {
+    color: #2374e0;
+    font-size: 2.02rem;
+    font-weight: 800;
+    margin-left: auto;
+    margin-right: 12px;
+    line-height: 1.09;
+    text-align: right;
+}
+.car-list-card-price-label {
+    color: #878787;
+    font-size: 1.05rem;
+    font-weight: 400;
+    margin-left: 4px;
+}
+/* 반응형 모바일 */
+@media (max-width: 640px) {
+    .car-list-item-card {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 14px 8px 16px 8px;
+    }
+    .car-list-card-image {
+        width: 98vw;
+        max-width: 94vw;
+        height: 180px;
+        margin-right: 0;
+        margin-bottom: 12px;
+    }
+    .car-list-card-price {
+        margin-left: 0;
+        margin-right: 0;
     }
 }

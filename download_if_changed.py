@@ -1,12 +1,5 @@
-# 필요 모듈이 없을 경우 자동 설치
-try:
-    import requests
-except ImportError:
-    import subprocess
-    import sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
-    import requests
-
+# 필요 모듈 import
+import requests
 import os
 from datetime import datetime, timedelta
 import sys
@@ -16,38 +9,6 @@ URL = "https://www.xn--2q1bm5w1qdbqaq6cwvm.com/wp-content/themes/welcomecar-new/
 META_FILE = "auction_data.meta"  # ETag, Last-Modified 저장
 SAVE_DIR = "sources"  # 저장 폴더
 os.makedirs(SAVE_DIR, exist_ok=True)
-
-# ===== 실행 조건 필터 =====
-def should_run_now() -> bool:
-    """
-    1) 02:00~08:59는 무조건 실행 안함 (09:00 포함)
-    2) 평일(월~금): 20~22시(20:00~22:59)만 10분 단위 실행 (minute % 10 == 0)
-    3) 주말(토~일): 4시간마다(0,4,8,12,16,20)에만 실행
-    """
-    now_kst = datetime.utcnow() + timedelta(hours=9)
-    hour = now_kst.hour
-    minute = now_kst.minute
-    weekday = now_kst.weekday()  # 월=0, ..., 토=5, 일=6
-
-    # 02~08시는 제외 (09시는 포함)
-    if 2 <= hour < 9:
-        print(f"[INFO] 현재 시간 {hour:02d}시는 실행 안함 (02~09시 제외)")
-        return False
-
-    if weekday < 5:
-        # 평일: 20~22시(20:00~22:59)에만 10분 단위 실행
-        if 20 <= hour <= 22 and minute % 10 == 0:
-            return True
-        else:
-            print(f"[INFO] 평일 {hour:02d}:{minute:02d} 실행 조건 아님 (20~22시 10분단위만 실행)")
-            return False
-    else:
-        # 주말: 4시간마다(0,4,8,12,16,20)
-        if hour % 4 == 0:
-            return True
-        else:
-            print(f"[INFO] 주말 {hour:02d}시는 4시간마다만 실행")
-            return False
 
 # ===== 날짜 계산 (다음 영업일, KST 기준) =====
 def get_next_business_day_kr():
@@ -116,9 +77,6 @@ def download_if_changed():
     raise Exception(f"Unexpected status: {resp.status_code}")
 
 if __name__ == "__main__":
-    if not should_run_now():
-        sys.exit(0)  # 실행 조건 미충족 시 종료
-
     changed = download_if_changed()
     now_kst_str = (datetime.utcnow() + timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S")
     if changed:
