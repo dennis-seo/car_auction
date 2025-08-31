@@ -523,17 +523,21 @@ function renderCarGalleryCardList(filteredData) {
         const title = row.title || '-';
         const auctionName = row.auction_name || '';
         const subtitle = row.subtitle || '';
+        const sellNumber = row.sell_number || '';
         const infoArr = [];
         if (row.year)        infoArr.push(row.year);
         if (row.km)          infoArr.push(`${parseInt(row.km,10).toLocaleString()}km`);
         if (row.fuel)        infoArr.push(row.fuel);
         if (row.region)      infoArr.push(row.region);
         const meta = infoArr.join('  |  ');
-        // 모바일용 meta+price를 같은 줄에, 데스크탑 그대로
+        
         return `<div class="car-list-item-card">
             <img class="car-list-card-image" src="${imgUrl}" onerror="this.src='images/no_car_image.png'" alt="차량 이미지">
             <div class="car-list-card-details">
-                ${auctionName ? `<div class="car-list-card-auction">${auctionName}</div>` : ''}
+                <div class="card-pill-row">
+                    ${sellNumber ? `<span class="car-list-card-sellnumber">출품번호 ${sellNumber}</span>` : ''}
+                    ${auctionName ? `<span class="car-list-card-auction">${auctionName}</span>` : ''}
+                </div>
                 ${subtitle ? `<div class="car-list-card-subtitle">${subtitle}</div>` : ''}
                 <div class="car-list-card-title">${title}</div>
                 <div class="car-list-card-meta-price-row">
