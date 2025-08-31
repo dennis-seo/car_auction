@@ -659,35 +659,59 @@ tbody tr:hover {
         gap: 0;
         border-radius: 16px;
         overflow: hidden;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 16px;
     }
     .car-list-card-image {
         width: 100%;
-        height: 180px;
+        height: 200px;
         margin: 0;
         border-radius: 16px 16px 0 0;
+        object-fit: cover;
     }
     .car-list-card-details {
-        padding: 14px;
+        padding: 16px;
+        position: relative;
+    }
+    .card-pill-row {
+        margin-bottom: 8px;
     }
     .car-list-card-title {
-        font-size: 1rem;
-        line-height: 1.2;
-        margin-bottom: 6px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1.3;
+        margin-bottom: 8px;
+        color: #333;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
     .car-list-card-meta-price-row {
-        display: block;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-top: 12px;
     }
     .car-list-card-meta {
-        font-size: 0.85rem;
-        margin-bottom: 10px;
+        font-size: 0.9rem;
+        color: #888;
+        line-height: 1.2;
+        flex: 1;
     }
     .car-list-card-price {
-        font-size: 1.2rem;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #4a90e2;
         text-align: right;
         margin: 0;
+        margin-left: 12px;
     }
     .car-list-card-price-label {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        margin-left: 2px;
     }
 }
 /* --- 메인 검색 영역 스타일 끝 --- */

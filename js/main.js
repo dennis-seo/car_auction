@@ -714,7 +714,7 @@ if (!('lastSortedFilter' in appState)) appState.lastSortedFilter = null;
 function renderActiveFilterPills_multi() {
     const bar = DOM.activeFiltersBar;
     bar.innerHTML = '';
-    
+
     // 검색어 필터 pill 추가
     if (appState.searchQuery && appState.searchQuery.trim() !== '') {
         const pill = document.createElement('span');
@@ -735,36 +735,75 @@ function renderActiveFilterPills_multi() {
         pill.appendChild(closeBtn);
         bar.appendChild(pill);
     }
-    
-    Object.keys(appState.activeFilters).forEach(key => {
-        if(key === 'year') {
-            const v = appState.activeFilters.year;
-            if(Array.isArray(v) && v.length === 2) {
-                const pill = document.createElement('span');
-                pill.className = 'filter-pill';
-                pill.innerHTML = `<span class="filter-pill-label">연식</span><span class="filter-pill-value">${v[0]} ~ ${v[1]}</span>`;
-                const closeBtn = document.createElement('button');
-                closeBtn.className = 'filter-pill-remove';
-                closeBtn.type = 'button';
-                closeBtn.setAttribute('aria-label', '필터 제거');
-                closeBtn.innerHTML = '×';
-                closeBtn.onclick = () => {
-                    appState.activeFilters.year = [];
-                    render();
-                }
-                pill.appendChild(closeBtn);
-                bar.appendChild(pill);
-            }
-            return;
+
+    // 연식 필터 pill 처리
+    const yearValue = appState.activeFilters.year;
+    if (Array.isArray(yearValue) && yearValue.length === 2) {
+        const pill = document.createElement('span');
+        pill.className = 'filter-pill';
+        pill.innerHTML = `<span class="filter-pill-label">연식</span><span class="filter-pill-value">${yearValue[0]} ~ ${yearValue[1]}</span>`;
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'filter-pill-remove';
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', '필터 제거');
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = () => {
+            appState.activeFilters.year = [];
+            render();
         }
-        // ... 나머지는 기존대로 ...
+        pill.appendChild(closeBtn);
+        bar.appendChild(pill);
+    }
+
+    // 연료 필터 pill 처리 (fuelPills 기반)
+    const fuelPillValues = (appState.activeFilters.fuelPills || []).filter(val => val && val !== 'undefined');
+    fuelPillValues.forEach(val => {
+        const pill = document.createElement('span');
+        pill.className = 'filter-pill';
+        const labelText = typeof FILTER_LABELS.fuel === 'function' ? FILTER_LABELS.fuel() : FILTER_LABELS.fuel;
+        pill.innerHTML = `<span class="filter-pill-label">${labelText}</span><span class="filter-pill-value">${val}</span>`;
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'filter-pill-remove';
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', '필터 제거');
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = () => {
+            const definedFuelTypes = {
+                '가솔린': ['가솔린', '휘발유'],
+                '디젤': ['디젤', '경유'],
+                '하이브리드': ['하이브리드', '가솔린하이브리드'],
+                'LPG': ['LPG'],
+                '전기': ['전기']
+            };
+            let fuelsToRemove = [];
+            if (val === '기타') {
+                const allDefinedVariants = Object.values(definedFuelTypes).flat();
+                const rawFuelTypes = [...new Set(appState.allData.map(row => row.fuel).filter(Boolean))];
+                fuelsToRemove = rawFuelTypes.filter(f => !allDefinedVariants.includes(f));
+            } else if (definedFuelTypes[val]) {
+                fuelsToRemove = definedFuelTypes[val];
+            } else {
+                fuelsToRemove = [val];
+            }
+            appState.activeFilters.fuel = (appState.activeFilters.fuel || []).filter(f => !fuelsToRemove.includes(f));
+            appState.activeFilters.fuelPills = (appState.activeFilters.fuelPills || []).filter(v => v !== val && v && v !== 'undefined');
+            render();
+        };
+        pill.appendChild(closeBtn);
+        bar.appendChild(pill);
+    });
+
+    // 일반 필터 pill 처리 (fuel과 year, fuelPills 제외)
+    Object.keys(appState.activeFilters).forEach(key => {
+        if (key === 'fuel' || key === 'year' || key === 'fuelPills') {
+            return; // fuel, year, fuelPills는 위에서 별도 처리했으므로 건너뜀
+        }
+
         const values = appState.activeFilters[key] || [];
         values.forEach(val => {
             const pill = document.createElement('span');
             pill.className = 'filter-pill';
-            // 라벨이 함수인 경우 호출하여 값을 가져옴
             const labelText = typeof FILTER_LABELS[key] === 'function' ? FILTER_LABELS[key]() : FILTER_LABELS[key];
-            // 연료 필터의 경우 "가솔린하이브리드"를 "하이브리드"로 표시
             const displayValue = (key === 'fuel' && val === '가솔린하이브리드') ? '하이브리드' : val;
             pill.innerHTML = `<span class="filter-pill-label">${labelText}</span><span class="filter-pill-value">${displayValue}</span>`;
             const closeBtn = document.createElement('button');
@@ -773,18 +812,14 @@ function renderActiveFilterPills_multi() {
             closeBtn.setAttribute('aria-label', '필터 제거');
             closeBtn.innerHTML = '×';
             closeBtn.onclick = () => {
-                // 한 값만 제거, 배열에서 삭제
                 appState.activeFilters[key] = (appState.activeFilters[key]||[]).filter(v => v !== val);
-                // 정렬 기준 업데이트
                 if (["price","km"].includes(key)) {
                     if ((appState.activeFilters[key]||[]).length === 0) {
-                        // 해당 정렬기준 없앰
                         const other = key === 'price' ? 'km':'price';
                         if ((appState.activeFilters[other]||[]).length > 0) appState.lastSortedFilter = other;
                         else appState.lastSortedFilter = null;
-                    } // else, 마지막 삭제가 이 필드였음을 유지
+                    }
                 }
-                // 모델 제거 시 라벨 업데이트
                 if (key === 'model' && (appState.activeFilters.model||[]).length === 0) {
                     const modelBox = document.getElementById('model-select');
                     const label = modelBox?.querySelector('.car-select-label');
@@ -796,13 +831,13 @@ function renderActiveFilterPills_multi() {
             bar.appendChild(pill);
         });
     });
-    
+
     // 예산 범위 필터 pill 추가
     if (appState.budgetRange) {
         const { min, max } = appState.budgetRange;
         const minLabel = min === 0 ? '0원' : `${min.toLocaleString()}만원`;
         const maxLabel = max === Infinity ? '3,000만원이상' : `${max.toLocaleString()}만원`;
-        
+
         const pill = document.createElement('span');
         pill.className = 'filter-pill';
         pill.innerHTML = `<span class="filter-pill-label">예산</span><span class="filter-pill-value">${minLabel} ~ ${maxLabel}</span>`;
@@ -1304,322 +1339,177 @@ function setupFuelTypeButtons() {
 }
 
 function buildFuelTypeButtons() {
-    const container = document.getElementById('fuel-type-buttons');
-    const titleElement = document.getElementById('fuel-selection-title');
-    if (!container || !appState.fuelTypes) return;
-
-    // 오토허브 경매장인지 확인
-    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
-    const isAutoHub = uniqueAuctionNames.some(name => name.includes('오토허브'));
-
-    // 제목 업데이트
-    if (titleElement) {
-        titleElement.textContent = getFuelLabel();
-    }
-
-    // 기존 버튼들 제거
-    container.innerHTML = '';
-
-    if (isAutoHub) {
-        // 오토허브 경매장의 사용이력 아이콘 매핑
-        const usageHistoryIcons = {
-            '자가용': '🏠',
-            '렌트카': '🚗',
-            '업무용': '💼',
-            '리스': '📋',
-            '법인': '🏢',
-            '택시': '🚕',
-            '관용': '🏛️',
-            '영업용': '💰',
-            '화물': '🚛',
-            '기타': '❓'
-        };
-
-        // "전체" 버튼 추가
-        const allButton = document.createElement('div');
-        allButton.className = 'fuel-type-button';
-        allButton.innerHTML = `
-            <div class="fuel-type-icon">🎯</div>
-            <div>전체</div>
-        `;
-        allButton.onclick = () => {
-            appState.activeFilters.fuel = [];
-            updateFuelTypeButtons();
-            render();
-        };
-        container.appendChild(allButton);
-
-        // 사용이력 타입 버튼 생성
-        appState.fuelTypes.forEach(usageType => {
-            const button = document.createElement('div');
-            button.className = 'fuel-type-button';
-            button.dataset.fuelType = usageType;
-
-            const icon = usageHistoryIcons[usageType] || usageHistoryIcons['기타'];
-            button.innerHTML = `
-                <div class="fuel-type-icon">${icon}</div>
-                <div>${usageType}</div>
-            `;
-
-            button.onclick = () => {
-                const currentFuels = appState.activeFilters.fuel || [];
-                const isSelected = currentFuels.includes(usageType);
-                
-                if (isSelected) {
-                    // 이미 선택된 사용이력을 다시 클릭하면 제거
-                    appState.activeFilters.fuel = currentFuels.filter(fuel => fuel !== usageType);
-                } else {
-                    // 새로운 사용이력 추가 (중복 제거)
-                    appState.activeFilters.fuel = [...new Set([...currentFuels, usageType])];
-                }
-
-                updateFuelTypeButtons();
-                render();
-            };
-
-            container.appendChild(button);
-        });
-    } else {
-        // 일반 경매장의 연료 타입 처리
-        // 정의된 연료 타입들
-        const definedFuelTypes = ['가솔린', '휘발유', '디젤', '경유', '하이브리드', 'LPG', '전기'];
-
-        // 연료 타입별 아이콘 매핑
-        const fuelIcons = {
-            '가솔린': '⛽',
-            '디젤': '🚛',
-            '하이브리드': '🔋',
-            'LPG': '💨',
-            '전기': '🔌',
-            '기타': '🚗'
-        };
-
-        // "가솔린하이브리드"를 "하이브리드"로 통합 처리
-        const processedFuelTypes = appState.fuelTypes.map(fuel => 
-            fuel === '가솔린하이브리드' ? '하이브리드' : fuel
-        );
-        const uniqueFuelTypes = [...new Set(processedFuelTypes)];
-
-        const categorizedFuelTypes = [];
-
-        definedFuelTypes.forEach(fuelType => {
-            if (uniqueFuelTypes.includes(fuelType)) {
-                categorizedFuelTypes.push(fuelType);
-            }
-        });
-
-        // 정의되지 않은 연료 타입들이 있는지 확인
-        // 가솔린하이브리드는 하이브리드로 통합되므로 기타에서 제외
-        const otherFuelTypes = appState.fuelTypes.filter(fuel => {
-            if (fuel === '가솔린하이브리드') return false; // 하이브리드로 통합
-            return !definedFuelTypes.includes(fuel);
-        });
-        if (otherFuelTypes.length > 0) {
-            categorizedFuelTypes.push('기타');
+    if (!appState.allData || appState.allData.length === 0) return;
+    
+    // 연료 타입별 개수 카운트 (원본 데이터 기준)
+    const rawFuelCounts = {};
+    appState.allData.forEach(row => {
+        const fuel = row.fuel;
+        if (fuel) {
+            rawFuelCounts[fuel] = (rawFuelCounts[fuel] || 0) + 1;
         }
+    });
 
-        // "전체" 버튼 추가
-        const allButton = document.createElement('div');
-        allButton.className = 'fuel-type-button';
-        allButton.innerHTML = `
-            <div class="fuel-type-icon">🎯</div>
-            <div>전체</div>
-        `;
-        allButton.onclick = () => {
-            appState.activeFilters.fuel = [];
-            updateFuelTypeButtons();
-            render();
-        };
-        container.appendChild(allButton);
+    // 정의된 연료 타입들과 통합 처리
+    const definedFuelTypes = {
+        '가솔린': ['가솔린', '휘발유'],
+        '디젤': ['디젤', '경유'],
+        '하이브리드': ['하이브리드', '가솔린하이브리드'],
+        'LPG': ['LPG'],
+        '전기': ['전기']
+    };
 
-        // 분류된 연료 타입 버튼 생성
-        categorizedFuelTypes.forEach(fuelType => {
-            const button = document.createElement('div');
-            button.className = 'fuel-type-button';
+    // 연료 타입별 아이콘 매핑
+    const fuelIcons = {
+        '가솔린': '⛽',
+        '디젤': '🚛',
+        '하이브리드': '🔋',
+        'LPG': '💨',
+        '전기': '🔌',
+        '기타': '🌿'
+    };
 
-            if (fuelType === '기타') {
-                button.dataset.fuelType = 'others';
-                button.dataset.otherTypes = JSON.stringify(otherFuelTypes);
-            } else {
-                button.dataset.fuelType = fuelType;
-            }
+    // 각 정의된 연료 타입별 개수 계산
+    const fuelCounts = {};
+    Object.keys(definedFuelTypes).forEach(mainType => {
+        const variants = definedFuelTypes[mainType];
+        const count = variants.reduce((sum, variant) => sum + (rawFuelCounts[variant] || 0), 0);
+        if (count > 0) {
+            fuelCounts[mainType] = count;
+        }
+    });
 
-            const icon = fuelIcons[fuelType];
-            button.innerHTML = `
-                <div class="fuel-type-icon">${icon}</div>
-                <div>${fuelType}</div>
-            `;
-
-            button.onclick = () => {
-                const currentFuels = appState.activeFilters.fuel || [];
-
-                if (fuelType === '기타') {
-                    // 기타 버튼 클릭 시 정의되지 않은 연료 타입들 처리
-                    const currentOtherFuels = currentFuels.filter(fuel => otherFuelTypes.includes(fuel));
-                    if (currentOtherFuels.length > 0) {
-                        // 이미 기타 연료가 선택된 경우 기타 연료들 제거
-                        appState.activeFilters.fuel = currentFuels.filter(fuel => !otherFuelTypes.includes(fuel));
-                    } else {
-                        // 기타 연료들 추가 (정의되지 않은 연료 타입들)
-                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...otherFuelTypes])];
-                    }
-                } else if (fuelType === '하이브리드') {
-                    // 하이브리드 버튼 클릭 시 "하이브리드"와 "가솔린하이브리드" 모두 고려
-                    const hybridTypes = appState.fuelTypes.filter(fuel => 
-                        fuel === '하이브리드' || fuel === '가솔린하이브리드'
-                    );
-                    const isHybridSelected = currentFuels.some(fuel => hybridTypes.includes(fuel));
-                    
-                    if (isHybridSelected) {
-                        // 하이브리드 관련 필터 제거
-                        appState.activeFilters.fuel = currentFuels.filter(fuel => 
-                            !hybridTypes.includes(fuel)
-                        );
-                    } else {
-                        // 하이브리드 필터 추가 (실제 데이터에 있는 타입들을 포함)
-                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...hybridTypes])];
-                    }
-                } else if (fuelType === '가솔린' || fuelType === '휘발유') {
-                    // 가솔린/휘발유 버튼 클릭 시 두 타입 모두 고려
-                    const gasolineTypes = appState.fuelTypes.filter(fuel => 
-                        fuel === '가솔린' || fuel === '휘발유'
-                    );
-                    const isGasolineSelected = currentFuels.some(fuel => gasolineTypes.includes(fuel));
-                    
-                    if (isGasolineSelected) {
-                        // 가솔린/휘발유 관련 필터 제거
-                        appState.activeFilters.fuel = currentFuels.filter(fuel => 
-                            !gasolineTypes.includes(fuel)
-                        );
-                    } else {
-                        // 가솔린/휘발유 필터 추가 (실제 데이터에 있는 타입들을 포함)
-                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...gasolineTypes])];
-                    }
-                } else if (fuelType === '디젤' || fuelType === '경유') {
-                    // 디젤/경유 버튼 클릭 시 두 타입 모두 고려
-                    const dieselTypes = appState.fuelTypes.filter(fuel => 
-                        fuel === '디젤' || fuel === '경유'
-                    );
-                    const isDieselSelected = currentFuels.some(fuel => dieselTypes.includes(fuel));
-                    
-                    if (isDieselSelected) {
-                        // 디젤/경유 관련 필터 제거
-                        appState.activeFilters.fuel = currentFuels.filter(fuel => 
-                            !dieselTypes.includes(fuel)
-                        );
-                    } else {
-                        // 디젤/경유 필터 추가 (실제 데이터에 있는 타입들을 포함)
-                        appState.activeFilters.fuel = [...new Set([...currentFuels, ...dieselTypes])];
-                    }
-                } else {
-                    // 일반 연료 버튼 클릭
-                    const isSelected = currentFuels.includes(fuelType);
-                    if (isSelected) {
-                        // 이미 선택된 연료를 다시 클릭하면 제거
-                        appState.activeFilters.fuel = currentFuels.filter(fuel => fuel !== fuelType);
-                    } else {
-                        // 새로운 연료 추가 (중복 선택 가능)
-                        appState.activeFilters.fuel = [...new Set([...currentFuels, fuelType])];
-                    }
-                }
-
-                updateFuelTypeButtons();
-                render();
-            };
-
-            container.appendChild(button);
-        });
+    // 기타 연료 타입들 계산
+    const allDefinedVariants = Object.values(definedFuelTypes).flat();
+    const otherFuels = Object.keys(rawFuelCounts).filter(fuel => !allDefinedVariants.includes(fuel));
+    if (otherFuels.length > 0) {
+        const otherCount = otherFuels.reduce((sum, fuel) => sum + rawFuelCounts[fuel], 0);
+        fuelCounts['기타'] = otherCount;
     }
 
-    // 초기 상태 업데이트
+    // 버튼 HTML 생성
+    let buttonsHTML = '';
+    
+    // 전체 버튼 추가
+    const allActive = (!appState.activeFilters.fuel || appState.activeFilters.fuel.length === 0);
+    buttonsHTML += `<button class="fuel-type-button ${allActive ? 'active' : ''}" data-fuel="전체">
+        🎯 전체
+    </button>`;
+
+    // 연료 타입 버튼들 생성
+    Object.keys(fuelCounts).forEach(fuel => {
+        const count = fuelCounts[fuel];
+        const icon = fuelIcons[fuel];
+        const isActive = isFuelActive(fuel);
+        
+        buttonsHTML += `<button class="fuel-type-button ${isActive ? 'active' : ''}" 
+                        data-fuel="${fuel}">
+                    ${icon} ${fuel} (${count})
+                </button>`;
+    });
+
+    const container = document.getElementById('fuel-type-buttons');
+    if (container) {
+        container.innerHTML = buttonsHTML;
+        
+        // 이벤트 리스너 추가
+        container.querySelectorAll('.fuel-type-button').forEach(button => {
+            button.addEventListener('click', handleFuelButtonClick);
+        });
+    }
+}
+
+// --- 연료 타입 필터링 관련 함수들 ---
+function isFuelActive(fuel) {
+    // pill 표시용 배열을 기준으로 활성화 상태 확인
+    const activePills = appState.activeFilters.fuelPills || [];
+    return activePills.includes(fuel);
+}
+
+function handleFuelButtonClick(event) {
+    const button = event.currentTarget;
+    const fuel = button.dataset.fuel;
+    
+    if (!fuel) return;
+    
+    // 전체 버튼 클릭 시 연료 필터 초기화
+    if (fuel === '전체') {
+        appState.activeFilters.fuel = [];
+        appState.activeFilters.fuelPills = [];
+        updateFuelTypeButtons();
+        render();
+        return;
+    }
+    
+    // fuelPills 안전 초기화 및 undefined 등 제거
+    if (!Array.isArray(appState.activeFilters.fuelPills)) {
+        appState.activeFilters.fuelPills = [];
+    }
+    appState.activeFilters.fuelPills = appState.activeFilters.fuelPills.filter(val => val && val !== 'undefined');
+    
+    const currentFuels = appState.activeFilters.fuel || [];
+    let currentPills = appState.activeFilters.fuelPills || [];
+    
+    // 정의된 연료 타입별 실제 연료 매핑
+    const definedFuelTypes = {
+        '가솔린': ['가솔린', '휘발유'],
+        '디젤': ['디젤', '경유'],
+        '하이브리드': ['하이브리드', '가솔린하이브리드'],
+        'LPG': ['LPG'],
+        '전기': ['전기']
+    };
+    
+    let fuelsToToggle = [];
+    if (fuel === '기타') {
+        const allDefinedVariants = Object.values(definedFuelTypes).flat();
+        const rawFuelTypes = [...new Set(appState.allData.map(row => row.fuel).filter(Boolean))];
+        fuelsToToggle = rawFuelTypes.filter(f => !allDefinedVariants.includes(f));
+    } else if (definedFuelTypes[fuel]) {
+        fuelsToToggle = definedFuelTypes[fuel];
+    } else {
+        fuelsToToggle = [fuel];
+    }
+    
+    // 현재 선택된 상태 확인
+    const isSelected = fuelsToToggle.some(f => currentFuels.includes(f));
+    
+    if (isSelected) {
+        appState.activeFilters.fuel = currentFuels.filter(f => !fuelsToToggle.includes(f));
+        appState.activeFilters.fuelPills = currentPills.filter(p => p !== fuel && p && p !== 'undefined');
+    } else {
+        appState.activeFilters.fuel = [...new Set([...currentFuels, ...fuelsToToggle])];
+        // pill 추가: fuel이 truthy, 'undefined'가 아니고, 이미 pill에 없으면만 추가
+        if (fuel && fuel !== 'undefined' && !currentPills.includes(fuel)) {
+            appState.activeFilters.fuelPills = [...currentPills, fuel];
+        } else {
+            appState.activeFilters.fuelPills = currentPills.filter(val => val && val !== 'undefined');
+        }
+    }
     updateFuelTypeButtons();
+    render();
 }
 
 function updateFuelTypeButtons() {
     const container = document.getElementById('fuel-type-buttons');
     if (!container) return;
     
-    // 오토허브 경매장인지 확인
-    const uniqueAuctionNames = [...new Set(appState.allData.map(row => row.auction_name).filter(Boolean))];
-    const isAutoHub = uniqueAuctionNames.some(name => name.includes('오토허브'));
+    const buttons = container.querySelectorAll('.fuel-type-button');
+    const activePills = appState.activeFilters.fuelPills || [];
     
-    const currentFuels = appState.activeFilters.fuel || [];
-    
-    // 모든 버튼에서 selected 클래스 제거
-    container.querySelectorAll('.fuel-type-button').forEach(btn => {
-        btn.classList.remove('selected');
-    });
-    
-    if (currentFuels.length === 0) {
-        // 전체 버튼 선택
-        const allButton = container.querySelector('.fuel-type-button:first-child');
-        if (allButton) {
-            allButton.classList.add('selected');
-        }
-    } else {
-        if (isAutoHub) {
-            // 오토허브 경매장의 사용이력 버튼 처리
-            currentFuels.forEach(selectedUsage => {
-                const selectedButton = container.querySelector(`[data-fuel-type="${selectedUsage}"]`);
-                if (selectedButton) {
-                    selectedButton.classList.add('selected');
-                }
-            });
+    buttons.forEach(button => {
+        const fuel = button.dataset.fuel;
+        let isActive = false;
+        
+        if (fuel === '전체') {
+            // 전체 버튼: 활성 필터가 없을 때만 활성화
+            isActive = activePills.length === 0;
         } else {
-            // 일반 경매장의 연료 타입 버튼 처리
-            const definedFuelTypes = ['가솔린', '휘발유', '디젤', '경유', '하이브리드', 'LPG', '전기'];
-            
-            // 하이브리드 관련 처리
-            const isHybridSelected = currentFuels.includes('하이브리드') || currentFuels.includes('가솔린하이브리드');
-            if (isHybridSelected) {
-                const hybridButton = container.querySelector('[data-fuel-type="하이브리드"]');
-                if (hybridButton) {
-                    hybridButton.classList.add('selected');
-                }
-            }
-
-            // 가솔린/휘발유 관련 처리
-            const isGasolineSelected = currentFuels.includes('가솔린') || currentFuels.includes('휘발유');
-            if (isGasolineSelected) {
-                const gasolineButton = container.querySelector('[data-fuel-type="가솔린"]');
-                const gasolineButton2 = container.querySelector('[data-fuel-type="휘발유"]');
-                if (gasolineButton) gasolineButton.classList.add('selected');
-                if (gasolineButton2) gasolineButton2.classList.add('selected');
-            }
-
-            // 디젤/경유 관련 처리
-            const isDieselSelected = currentFuels.includes('디젤') || currentFuels.includes('경유');
-            if (isDieselSelected) {
-                const dieselButton = container.querySelector('[data-fuel-type="디젤"]');
-                const dieselButton2 = container.querySelector('[data-fuel-type="경유"]');
-                if (dieselButton) dieselButton.classList.add('selected');
-                if (dieselButton2) dieselButton2.classList.add('selected');
-            }
-
-            // 다른 정의된 연료 타입들 처리
-            definedFuelTypes.forEach(fuelType => {
-                if (['하이브리드', '가솔린', '휘발유', '디젤', '경유'].includes(fuelType)) return; // 이미 위에서 처리함
-
-                if (currentFuels.includes(fuelType)) {
-                    const selectedButton = container.querySelector(`[data-fuel-type="${fuelType}"]`);
-                    if (selectedButton) {
-                        selectedButton.classList.add('selected');
-                    }
-                }
-            });
-
-            // 기타 연료들이 선택된 경우
-            const otherButton = container.querySelector('[data-fuel-type="others"]');
-            if (otherButton) {
-                const otherTypes = JSON.parse(otherButton.dataset.otherTypes || '[]');
-                // 현재 선택된 연료 중 기타 연료가 있는지 확인
-                const hasOtherSelected = currentFuels.some(fuel => otherTypes.includes(fuel));
-                if (hasOtherSelected) {
-                    otherButton.classList.add('selected');
-                }
-            }
+            // 나머지 연료 버튼들: pill 배열에 포함되어 있으면 활성화
+            isActive = activePills.includes(fuel);
         }
-    }
+        
+        button.classList.toggle('active', isActive);
+    });
 }
 
 // --- 예산 범위 슬라이더 설정 ---
