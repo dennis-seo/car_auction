@@ -581,7 +581,7 @@ tbody tr:hover {
 }
 
 /* 반응형 대응 */
-@media (max-width: 860px) {
+@media (max-width: 768px) {
     .car-select-wrap {
         grid-template-columns: 1fr 1fr;
         grid-template-rows: repeat(2, auto);
@@ -592,7 +592,7 @@ tbody tr:hover {
     }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 480px) {
     .input-area {
         justify-content: stretch;
     }
@@ -601,7 +601,7 @@ tbody tr:hover {
     }
     .car-select-wrap {
         grid-template-columns: 1fr;
-        grid-template-rows: repeat(5, auto);
+        grid-template-rows: repeat(4, auto);
     }
     
     .car-select-wrap > .btn-base {
@@ -611,31 +611,47 @@ tbody tr:hover {
         font-size: 1.1rem;
         margin-bottom: 1rem;
     }
-    .car-select-wrap {
-        grid-template-columns: 1fr;
-        grid-template-rows: repeat(4, auto);
+    
+    /* 예산 슬라이더 반응형 */
+    .budget-range-section {
+        margin-top: 16px;
+        padding: 16px 20px;
     }
     
-    .car-select-wrap > .btn-base {
-        grid-column: 1;
-    }
-}
-
-@media (max-width: 560px) {
-    .main-search-area h3 {
-        font-size: 1.1rem;
-        margin-bottom: 1rem;
-    }
-    .car-select-wrap {
-        grid-template-columns: 1fr;
-        grid-template-rows: repeat(4, auto);
+    .budget-title h4 {
+        font-size: 16px;
     }
     
-    .car-select-wrap > .btn-base {
-        grid-column: 1;
+    #budget-range-text {
+        font-size: 14px;
+        padding: 6px 12px;
     }
     
-    /* 560px 이하에서도 동일한 모바일 카드 레이아웃 적용 */
+    /* 모바일에서 슬라이더 라벨 크기 조정 */
+    #budget-range-slider + .irs .irs-from,
+    #budget-range-slider + .irs .irs-to,
+    #budget-range-slider + .irs .irs-single {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+        min-width: 50px !important;
+    }
+    
+    /* 연료 타입 버튼 3열 그리드 */
+    .fuel-type-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        justify-items: center;
+        align-items: stretch;
+    }
+    .fuel-type-button {
+        width: 100%;
+        min-width: 0;
+        max-width: 110px;
+        box-sizing: border-box;
+    }
+    
+    /* 차량 카드 모바일 레이아웃 */
     .car-list-item-card {
         flex-direction: column;
         align-items: stretch;
@@ -730,17 +746,6 @@ tbody tr:hover {
     outline: none;
 }
 
-@media (max-width: 560px) {
-    #date-selector-container {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 12px;
-    }
-    #date-selector-container select {
-        width: 100%;
-        min-width: 0;
-    }
-}
 /* --- 날짜 선택 카드 스타일 끝 --- */
 
 /* --- 커스텀 셀렉트 드롭다운(제조사/모델/세부모델/연료 공통) --- */
@@ -903,6 +908,22 @@ tbody tr:hover {
         font-size: 20px;
     }
 }
+
+@media (max-width: 480px) {
+    .fuel-type-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        justify-items: center;
+        align-items: stretch;
+    }
+    .fuel-type-button {
+        width: 100%;
+        min-width: 0;
+        max-width: 110px;
+        box-sizing: border-box;
+    }
+}
 /* --- 연료 타입 선택 스타일 끝 --- */
 
 /* --- 예산 범위 슬라이더 스타일 시작 --- */
@@ -1044,30 +1065,6 @@ tbody tr:hover {
 }
 /* --- 예산 범위 슬라이더 스타일 끝 --- */
 
-@media (max-width: 560px) {
-    .budget-range-section {
-        margin-top: 16px;
-        padding: 16px 20px;
-    }
-    
-    .budget-title h4 {
-        font-size: 16px;
-    }
-    
-    #budget-range-text {
-        font-size: 14px;
-        padding: 6px 12px;
-    }
-    
-    /* 모바일에서 슬라이더 라벨 크기 조정 */
-    #budget-range-slider + .irs .irs-from,
-    #budget-range-slider + .irs .irs-to,
-    #budget-range-slider + .irs .irs-single {
-        font-size: 12px !important;
-        padding: 6px 10px !important;
-        min-width: 50px !important;
-    }
-}
 
 /* 차량 이미지 리스트 갤러리 영역 */
 .car-list-gallery {
@@ -1205,61 +1202,3 @@ tbody tr:hover {
     margin-left: 4px;
 }
 /* 반응형 모바일 */
-@media (max-width: 640px) {
-    .car-list-item-card {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 0;
-        gap: 0;
-        border-radius: 16px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    .car-list-card-image {
-        width: 100%;
-        height: 200px;
-        margin: 0;
-        border-radius: 16px 16px 0 0;
-        object-fit: cover;
-    }
-    .car-list-card-details {
-        padding: 16px;
-        gap: 8px;
-    }
-    .car-list-card-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #333;
-        margin: 0 0 8px 0;
-        line-height: 1.3;
-    }
-    .car-list-card-subtitle {
-        display: none; /* 이미지 레이아웃에서는 subtitle 숨김 */
-    }
-    .car-list-card-auction {
-        display: none; /* 이미지 레이아웃에서는 auction 정보 숨김 */
-    }
-    /* 모바일에서 메타 정보와 가격을 분리 */
-    .car-list-card-meta-price-row {
-        display: block;
-    }
-    .car-list-card-meta {
-        font-size: 0.9rem;
-        color: #888;
-        margin: 0 0 12px 0;
-        line-height: 1.4;
-    }
-    .car-list-card-price {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #1976d2;
-        text-align: right;
-        margin: 0;
-        line-height: 1.2;
-    }
-    .car-list-card-price-label {
-        font-size: 1rem;
-        font-weight: 400;
-        color: #1976d2;
-    }
-}
