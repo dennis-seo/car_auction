@@ -620,6 +620,60 @@ tbody tr:hover {
         grid-column: 1;
     }
 }
+
+@media (max-width: 560px) {
+    .main-search-area h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+    .car-select-wrap {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, auto);
+    }
+    
+    .car-select-wrap > .btn-base {
+        grid-column: 1;
+    }
+    
+    /* 560px 이하에서도 동일한 모바일 카드 레이아웃 적용 */
+    .car-list-item-card {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0;
+        gap: 0;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    .car-list-card-image {
+        width: 100%;
+        height: 180px;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+    }
+    .car-list-card-details {
+        padding: 14px;
+    }
+    .car-list-card-title {
+        font-size: 1rem;
+        line-height: 1.2;
+        margin-bottom: 6px;
+    }
+    .car-list-card-meta-price-row {
+        display: block;
+    }
+    .car-list-card-meta {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+    }
+    .car-list-card-price {
+        font-size: 1.2rem;
+        text-align: right;
+        margin: 0;
+    }
+    .car-list-card-price-label {
+        font-size: 0.9rem;
+    }
+}
 /* --- 메인 검색 영역 스타일 끝 --- */
 
 /* --- 날짜 선택 카드 스타일 시작 --- */
@@ -1093,6 +1147,12 @@ tbody tr:hover {
     width: fit-content;
     max-width: 100%;
 }
+/* 데스크톱에서는 기존 레이아웃 유지 */
+.car-list-card-meta-price-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
 .car-list-card-price {
     color: #2374e0;
     font-size: 2.02rem;
@@ -1101,6 +1161,7 @@ tbody tr:hover {
     margin-right: 12px;
     line-height: 1.09;
     text-align: right;
+    flex-shrink: 0;
 }
 .car-list-card-price-label {
     color: #878787;
@@ -1113,32 +1174,57 @@ tbody tr:hover {
     .car-list-item-card {
         flex-direction: column;
         align-items: stretch;
-        padding: 14px 8px 16px 8px;
+        padding: 0;
+        gap: 0;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
     }
     .car-list-card-image {
-        width: 98vw;
-        max-width: 94vw;
-        height: 180px;
-        margin-right: 0;
-        margin-bottom: 12px;
+        width: 100%;
+        height: 200px;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+        object-fit: cover;
+    }
+    .car-list-card-details {
+        padding: 16px;
+        gap: 8px;
+    }
+    .car-list-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #333;
+        margin: 0 0 8px 0;
+        line-height: 1.3;
+    }
+    .car-list-card-subtitle {
+        display: none; /* 이미지 레이아웃에서는 subtitle 숨김 */
+    }
+    .car-list-card-auction {
+        display: none; /* 이미지 레이아웃에서는 auction 정보 숨김 */
+    }
+    /* 모바일에서 메타 정보와 가격을 분리 */
+    .car-list-card-meta-price-row {
+        display: block;
+    }
+    .car-list-card-meta {
+        font-size: 0.9rem;
+        color: #888;
+        margin: 0 0 12px 0;
+        line-height: 1.4;
     }
     .car-list-card-price {
-        margin-left: 0;
-        margin-right: 0;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #1976d2;
+        text-align: right;
+        margin: 0;
+        line-height: 1.2;
     }
-}
-
-@media (max-width: 560px) {
-    .main-search-area h3 {
-        font-size: 1.1rem;
-        margin-bottom: 1rem;
-    }
-    .car-select-wrap {
-        grid-template-columns: 1fr;
-        grid-template-rows: repeat(4, auto);
-    }
-    
-    .car-select-wrap > .btn-base {
-        grid-column: 1;
+    .car-list-card-price-label {
+        font-size: 1rem;
+        font-weight: 400;
+        color: #1976d2;
     }
 }

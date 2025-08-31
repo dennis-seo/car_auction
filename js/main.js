@@ -529,17 +529,19 @@ function renderCarGalleryCardList(filteredData) {
         if (row.fuel)        infoArr.push(row.fuel);
         if (row.region)      infoArr.push(row.region);
         const meta = infoArr.join('  |  ');
-
+        // 모바일용 meta+price를 같은 줄에, 데스크탑 그대로
         return `<div class="car-list-item-card">
             <img class="car-list-card-image" src="${imgUrl}" onerror="this.src='images/no_car_image.png'" alt="차량 이미지">
             <div class="car-list-card-details">
                 ${auctionName ? `<div class="car-list-card-auction">${auctionName}</div>` : ''}
                 ${subtitle ? `<div class="car-list-card-subtitle">${subtitle}</div>` : ''}
                 <div class="car-list-card-title">${title}</div>
-                <div class="car-list-card-meta">${meta}</div>
-            </div>
-            <div class="car-list-card-price">
-                ${price}<span class="car-list-card-price-label">만원</span>
+                <div class="car-list-card-meta-price-row">
+                    <div class="car-list-card-meta">${meta}</div>
+                    <div class="car-list-card-price">
+                        ${price}<span class="car-list-card-price-label">만원</span>
+                    </div>
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -1378,8 +1380,8 @@ function buildFuelTypeButtons() {
 
         // 연료 타입별 아이콘 매핑
         const fuelIcons = {
-            '휘발유': '⛽',
-            '경유': '🚛',
+            '가솔린': '⛽',
+            '디젤': '🚛',
             '하이브리드': '🔋',
             'LPG': '💨',
             '전기': '🔌',
