@@ -238,6 +238,7 @@ async function initialize() {
     setupSubmodelSelect();
     setupFuelTypeButtons();
     setupBudgetSlider();
+    setupYearRangeSlider();
 
     // 검색 이벤트: 버튼 클릭 및 Enter 입력
     if (DOM.searchButton) {
@@ -318,6 +319,7 @@ function loadDataForDate(date) {
                 renderAuctionLogos();
                 render();
                 buildFuelTypeButtons();
+                updateYearSliderRange(); // 연식 슬라이더 범위 업데이트
                 DOM.messageEl.style.display = 'none';
                 DOM.carTable.style.display = 'table';
             } else {
@@ -1669,6 +1671,44 @@ function setupBudgetSlider() {
     updateBudgetText(initialData, budgetRanges, budgetText);
 }
 
+// --- 연식 범위 슬라이더 설정 ---
+function setupYearRangeSlider() {
+    const slider = document.getElementById('year-range-slider');
+    const yearText = document.getElementById('year-range-text');
+    
+    if (!slider || !yearText) return;
+    
+    // 데이터가 로드된 후 실제 min/max 사용, 기본값으로 2000-2025 설정
+    const minYear = appState.yearMin || 2000;
+    const maxYear = appState.yearMax || 2025;
+    
+    // 슬라이더 초기화
+    $(slider).ionRangeSlider({
+        type: 'double',
+        min: minYear,
+        max: maxYear,
+        from: minYear,
+        to: maxYear,
+        grid: true,
+        hide_min_max: true,
+        hide_from_to: false,
+        prettify: function(num) {
+            return num + '년';
+        },
+        onChange: function(data) {
+            updateYearText(data, minYear, maxYear, yearText);
+            updateYearFilter(data, minYear, maxYear);
+        },
+        onFinish: function(data) {
+            updateYearText(data, minYear, maxYear, yearText);
+            updateYearFilter(data, minYear, maxYear);
+        }
+    });
+    
+    // 초기 텍스트 설정
+    updateYearText({ from: minYear, to: maxYear }, minYear, maxYear, yearText);
+}
+
 function updateBudgetText(data, budgetRanges, textElement) {
     const fromLabel = budgetRanges[data.from].label;
     const toLabel = budgetRanges[data.to].label;
@@ -1704,6 +1744,31 @@ function updateBudgetFilter(data, budgetRanges) {
     }
 }
 
+// --- 연식 필터 관련 헬퍼 함수 추가 ---
+function updateYearText(data, minYear, maxYear, textElement) {
+    if (data.from === minYear && data.to === maxYear) {
+        textElement.textContent = '최소~최대 연식의 모든 차량';
+    } else if (data.from === data.to) {
+        textElement.textContent = `${data.from}년식 차량만 보고 싶어요`;
+    } else {
+        textElement.textContent = `${data.from}년 ~ ${data.to}년 차량`;
+    }
+}
+
+function updateYearFilter(data, minYear, maxYear) {
+    // 전체 범위인 경우 필터 해제
+    if (data.from === minYear && data.to === maxYear) {
+        appState.activeFilters.year = [];
+    } else {
+        appState.activeFilters.year = [data.from, data.to];
+    }
+    
+    // 렌더링 업데이트 (데이터가 로드된 경우에만)
+    if (appState.allData && appState.allData.length > 0) {
+        render();
+    }
+}
+
 // --- 경매장별 연료 라벨 가져오기 함수 ---
 function getFuelLabel() {
     if (!appState.allData || appState.allData.length === 0) return '연료';
@@ -1721,6 +1786,37 @@ function getFuelLabel() {
 
 // --- 앱 실행 ---
 initialize();
+
+// 연식 슬라이더 업데이트 함수 추가
+function updateYearSliderRange() {
+    const slider = $('#year-range-slider').data('ionRangeSlider');
+    if (!slider || !appState.allData || appState.allData.length === 0) return;
+    const years = appState.allData
+        .map(row => parseInt(row.year, 10))
+        .filter(year => !isNaN(year));
+    if (years.length === 0) return;
+
+    const minYear = Math.min(...years);
+    const maxYear = Math.max(...years);
+
+    // appState에 저장
+    appState.yearMin = minYear;
+    appState.yearMax = maxYear;
+
+    // 기존 슬라이더 업데이트
+    slider.update({
+        min: minYear,
+        max: maxYear,
+        from: minYear,
+        to: maxYear
+    });
+
+    // 텍스트도 동기화
+    const yearText = document.getElementById('year-range-text');
+    if (yearText) {
+        yearText.textContent = '최소~최대 연식의 모든 차량';
+    }
+}
 
 // 검색어 적용 함수
 function applySearchQuery() {
