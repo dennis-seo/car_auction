@@ -1,0 +1,9 @@
+{
+    "commands": [
+        {
+            "name": "create commit message",
+            "path": ".firebender/commands/git-push-message-rule.md",
+            "model": "fast"
+        }
+    ]
+}
