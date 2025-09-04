@@ -78,11 +78,11 @@ class CORSRequestHandler(BaseHTTPRequestHandler):
 
 
 def run_server(port=8000):
-    server = HTTPServer(('localhost', port), CORSRequestHandler)
-    print(f"서버 시작: http://localhost:{port}")
+    server = HTTPServer(('0.0.0.0', port), CORSRequestHandler)
+    print(f"서버 시작: http://0.0.0.0:{port}")
     print("사용 가능한 엔드포인트:")
-    print(f"  - GET http://localhost:{port}/api/dates (날짜 목록)")
-    print(f"  - GET http://localhost:{port}/api/csv/{{date}} (CSV 파일)")
+    print(f"  - GET http://0.0.0.0:{port}/api/dates (날짜 목록)")
+    print(f"  - GET http://0.0.0.0:{port}/api/csv/{{date}} (CSV 파일)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
