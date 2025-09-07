@@ -1,0 +1,65 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  schedule:
+    # 매일 20:00, 21:00, 22:00 KST에 실행
+    - cron: '0 11,12,13 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: pip install requests
+
+      - name: Download auction data
+        run: python download_if_changed.py
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Copy data to public folder
+        run: |
+          mkdir -p public/sources
+          if [ -d "sources" ]; then
+            cp sources/*.csv public/sources/ 2>/dev/null || echo "No CSV files to copy"
+          fi
+          python generate_dates.py
+
+      - name: Build React app
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './build'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
