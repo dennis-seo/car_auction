@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * 활성화된 필터 표시 컴포넌트
  */
-const ActiveFilters = ({ activeFilters, budgetRange, onRemoveFilter, onRemoveBudgetRange }) => {
+const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, onRemoveFilter, onRemoveBudgetRange, onRemoveSearchQuery }) => {
     const FILTER_LABELS = {
         title: '차종',
         model: '모델',
@@ -25,6 +25,24 @@ const ActiveFilters = ({ activeFilters, budgetRange, onRemoveFilter, onRemoveBud
 
     const renderFilterPills = () => {
         const pills = [];
+
+        // 검색어 필터 (맨 앞에 표시)
+        if (searchQuery && searchQuery.trim() !== '') {
+            pills.push(
+                <span key="search" className="filter-pill">
+                    <span className="filter-pill-label">🔍 검색어</span>
+                    <span className="filter-pill-value">{searchQuery}</span>
+                    <button
+                        className="filter-pill-remove"
+                        type="button"
+                        aria-label="검색어 제거"
+                        onClick={onRemoveSearchQuery}
+                    >
+                        ×
+                    </button>
+                </span>
+            );
+        }
 
         // 연식 필터
         if (Array.isArray(activeFilters.year) && activeFilters.year.length === 2) {

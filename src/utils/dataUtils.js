@@ -1,5 +1,8 @@
 import { appState, mileageRanges, priceRanges } from './appState';
 
+// 공용 정적 데이터 경로 - 라우트가 바뀌어도 항상 앱 루트 기준으로 로드되도록 PUBLIC_URL을 사용
+const SEARCH_TREE_URL = `${process.env.PUBLIC_URL || ''}/data/search_tree.json`;
+
 // 제조사 목록 캐시
 let cachedBrandList = null;
 let cachedSearchTree = null;
@@ -104,7 +107,8 @@ export function initializeFiltersAndOptions() {
 export async function loadBrandList() {
     if (cachedBrandList) return cachedBrandList;
     try {
-        const res = await fetch('data/search_tree.json', { cache: 'no-cache' });
+        // 앱이 서브 경로나 동적 라우트 하위에서 실행될 때 상대 경로가 깨지는 문제를 예방
+        const res = await fetch(SEARCH_TREE_URL, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
         
@@ -126,7 +130,8 @@ export async function loadBrandList() {
 export async function loadSearchTree() {
     if (cachedSearchTree) return cachedSearchTree;
     try {
-        const res = await fetch('data/search_tree.json', { cache: 'no-cache' });
+        // 앱 라우트가 바뀌어도 올바른 정적 파일 경로를 보장
+        const res = await fetch(SEARCH_TREE_URL, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
         cachedSearchTree = json;
@@ -198,12 +203,19 @@ export function formatYYMMDDToLabel(input) {
 /**
  * 데이터를 필터링합니다.
  */
-export function filterData(data, activeFilters, searchQuery, budgetRange) {
+export function filterData(data, activeFilters, searchQuery, budgetRange, yearRange) {
     return data.filter(row => {
-        // 연식 필터
+        // 연식 필터 (activeFilters의 year 배열)
         if (Array.isArray(activeFilters.year) && activeFilters.year.length === 2) {
             const year = parseInt(row.year, 10);
             const [minYear, maxYear] = activeFilters.year;
+            if (isNaN(year) || year < minYear || year > maxYear) return false;
+        }
+        
+        // 연식 범위 슬라이더 필터 (yearRange)
+        if (yearRange && Array.isArray(yearRange) && yearRange.length === 2) {
+            const year = parseInt(row.year, 10);
+            const [minYear, maxYear] = yearRange;
             if (isNaN(year) || year < minYear || year > maxYear) return false;
         }
         

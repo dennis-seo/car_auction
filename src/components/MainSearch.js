@@ -3,6 +3,8 @@ import BrandSelector from './BrandSelector';
 import ModelSelector from './ModelSelector';
 import SubmodelSelector from './SubmodelSelector';
 import BudgetSlider from './BudgetSlider';
+import YearSlider from './YearSlider';
+import FuelFilter from './FuelFilter';
 
 /**
  * 메인 검색 영역 컴포넌트
@@ -12,9 +14,11 @@ const MainSearch = ({
     activeFilters, 
     searchQuery, 
     budgetRange,
+    yearRange,
     onUpdateFilter, 
     onSearchQueryChange, 
-    onBudgetRangeChange 
+    onBudgetRangeChange,
+    onYearRangeChange
 }) => {
     const [inputValue, setInputValue] = useState(searchQuery);
 
@@ -97,11 +101,21 @@ const MainSearch = ({
                     </span>
                 </div>
             </div>
-
-            <BudgetSlider 
-                budgetRange={budgetRange}
-                onBudgetRangeChange={onBudgetRangeChange}
+            <FuelFilter 
+                data={data}
+                activeFilters={activeFilters}
+                onUpdateFilter={onUpdateFilter}
             />
+            <div className="slider-container-wrapper">
+                <BudgetSlider 
+                    budgetRange={budgetRange}
+                    onBudgetRangeChange={onBudgetRangeChange}
+                />
+                <YearSlider 
+                    yearRange={yearRange}
+                    onYearRangeChange={onYearRangeChange}
+                />
+            </div>
         </div>
     );
 };

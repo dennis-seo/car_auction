@@ -11,6 +11,7 @@ const CarTable = ({
     activeFilters, 
     searchQuery, 
     budgetRange, 
+    yearRange,
     onImageClick, 
     onDetailsClick, 
     onUpdateFilter,
@@ -21,9 +22,9 @@ const CarTable = ({
     const filteredData = useMemo(() => {
         if (!data || data.length === 0) return [];
         
-        const filtered = filterData(data, activeFilters, searchQuery, budgetRange);
+        const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
         return sortFilteredData(filtered, activeFilters, appState.lastSortedFilter);
-    }, [data, activeFilters, searchQuery, budgetRange]);
+    }, [data, activeFilters, searchQuery, budgetRange, yearRange]);
 
     useEffect(() => {
         // 데이터가 변경되면 테이블 필터 옵션 업데이트

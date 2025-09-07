@@ -22,6 +22,7 @@ function App() {
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [budgetRange, setBudgetRange] = useState(null);
+    const [yearRange, setYearRange] = useState(null);
     const [message, setMessage] = useState('날짜를 선택하면 해당일의 경매 목록을 불러옵니다.');
     const [showMainSearch, setShowMainSearch] = useState(false);
     
@@ -76,6 +77,7 @@ function App() {
                         });
                         setSearchQuery('');
                         setBudgetRange(null);
+                        setYearRange(null);
                         setMessage('');
                         setShowMainSearch(true);
                         console.log('데이터 로드 완료, showMainSearch:', true);
@@ -134,6 +136,11 @@ function App() {
         setDetailsModal({ show: false, data: null });
     }, []);
 
+    // 검색어 제거 핸들러
+    const handleRemoveSearchQuery = useCallback(() => {
+        setSearchQuery('');
+    }, []);
+
     return (
         <div className="container">
             <h1>차량 경매 정보</h1>
@@ -162,17 +169,21 @@ function App() {
                     activeFilters={activeFilters}
                     searchQuery={searchQuery}
                     budgetRange={budgetRange}
+                    yearRange={yearRange}
                     onUpdateFilter={updateFilter}
                     onSearchQueryChange={setSearchQuery}
                     onBudgetRangeChange={setBudgetRange}
+                    onYearRangeChange={setYearRange}
                 />
             )}
 
             <ActiveFilters 
                 activeFilters={activeFilters}
                 budgetRange={budgetRange}
+                searchQuery={searchQuery}
                 onRemoveFilter={updateFilter}
                 onRemoveBudgetRange={() => setBudgetRange(null)}
+                onRemoveSearchQuery={handleRemoveSearchQuery}
             />
 
             <CarGallery 
@@ -180,6 +191,7 @@ function App() {
                 activeFilters={activeFilters}
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
+                yearRange={yearRange}
                 onImageClick={showImageModalHandler}
                 onDetailsClick={showDetailsModalHandler}
             />
@@ -189,6 +201,7 @@ function App() {
                 activeFilters={activeFilters}
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
+                yearRange={yearRange}
                 onImageClick={showImageModalHandler}
                 onDetailsClick={showDetailsModalHandler}
                 onUpdateFilter={updateFilter}
