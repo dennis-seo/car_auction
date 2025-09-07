@@ -59,6 +59,14 @@ jobs:
       - name: Build React app
         run: npm run build
 
+      - name: Verify build output and disable Jekyll
+        run: |
+          if [ ! -f "build/index.html" ]; then
+            echo "Error: build/index.html is missing. Failing early to avoid publishing README.md." >&2
+            exit 1
+          fi
+          touch build/.nojekyll
+
       # Ensure SPA fallback so deep links work on GitHub Pages
       - name: Add 404 fallback
         run: |
