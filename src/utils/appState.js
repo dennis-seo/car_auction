@@ -6,6 +6,8 @@ export const columnMapping = {
     "year": "연식", 
     "km": "주행거리", 
     "fuel": "연료", 
+    "auction_name": "경매장",
+    "region": "지역",
     "details": "기타"
 };
 
@@ -39,6 +41,8 @@ export const appState = {
         price: [], 
         km: [], 
         fuel: [], 
+        auction_name: [],
+        region: [],
         year: []
     },
     yearMin: null,

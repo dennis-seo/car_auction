@@ -18,7 +18,7 @@ function App() {
     const [data, setData] = useState([]);
     const [availableDates, setAvailableDates] = useState([]);
     const [activeFilters, setActiveFilters] = useState({
-        title: [], model: [], submodel: [], price: [], km: [], fuel: [], year: []
+        title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [budgetRange, setBudgetRange] = useState(null);
@@ -57,10 +57,10 @@ function App() {
         setMessage(`'${date}'의 경매 데이터를 불러오는 중입니다...`);
         
         try {
-            // GitHub Pages에서는 정적 파일로 접근
-            const filePath = `/sources/auction_data_${date}.csv`;
+            // API에서 CSV를 직접 파싱
+            const apiUrl = `https://car-auction-849074372493.asia-northeast3.run.app/api/csv/${date}`;
             
-            Papa.parse(filePath, {
+            Papa.parse(apiUrl, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
@@ -72,7 +72,7 @@ function App() {
                         appState.allData = newData;
                         initializeFiltersAndOptions();
                         setActiveFilters({
-                            title: [], model: [], submodel: [], price: [], km: [], fuel: [], year: []
+                            title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
                         });
                         setSearchQuery('');
                         setBudgetRange(null);
@@ -80,13 +80,13 @@ function App() {
                         setShowMainSearch(true);
                         console.log('데이터 로드 완료, showMainSearch:', true);
                     } else {
-                        setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (경로: ${filePath})`);
+                        setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
                         console.warn('CSV 데이터가 비어있습니다:', results);
                     }
                 },
                 error: function(error) {
                     console.error("파일 파싱 오류:", error);
-                    setMessage(`오류: '${date}' 파일을 읽을 수 없습니다. 파일이 존재하는지 확인해주세요.`);
+                    setMessage(`오류: '${date}' 날짜의 CSV를 읽을 수 없습니다. 잠시 후 다시 시도해주세요.`);
                 }
             });
         } catch (error) {
@@ -181,6 +181,7 @@ function App() {
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
                 onImageClick={showImageModalHandler}
+                onDetailsClick={showDetailsModalHandler}
             />
 
             <CarTable 

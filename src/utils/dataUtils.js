@@ -8,19 +8,60 @@ let cachedSearchTree = null;
  * GitHub Pages에서 사용 가능한 날짜 목록을 가져옵니다.
  */
 export async function fetchAvailableDates() {
+    // 1) 우선순위: 제공된 API에서 날짜 목록 조회
+    const primaryApi = 'https://car-auction-849074372493.asia-northeast3.run.app/api/dates';
     try {
-        // GitHub Pages에서는 정적 파일로 접근
-        const response = await fetch('/sources/dates.json');
+        const res = await fetch(primaryApi, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`API 호출 실패: ${res.status}`);
+        const payload = await res.json();
+        
+        // 다양한 응답 형태를 허용
+        let dates = Array.isArray(payload) ? payload
+            : Array.isArray(payload?.dates) ? payload.dates
+            : Array.isArray(payload?.data) ? payload.data
+            : null;
+        if (!Array.isArray(dates)) throw new Error('예상치 못한 응답 형식');
+        
+        // yymmdd로 정규화 후 유효한 값만 사용
+        const normalized = dates
+            .map(d => String(d ?? '').trim())
+            .map(d => {
+                const digits = d.replace(/\D/g, '');
+                if (/^\d{6}$/.test(digits)) return digits;     // yymmdd
+                if (/^\d{8}$/.test(digits)) return digits.slice(2); // yyyymmdd -> yymmdd
+                return null;
+            })
+            .filter(Boolean);
+        appState.availableDates = normalized.sort().reverse();
+        if (appState.availableDates.length > 0) return; // 성공 시 반환
+    } catch (error) {
+        console.warn('[dates] API 호출 실패, 정적 JSON으로 폴백합니다.', error);
+    }
+    
+    // 2) 폴백: 정적 JSON(/sources/dates.json)
+    try {
+        const response = await fetch('/sources/dates.json', { cache: 'no-cache' });
         if (response.ok) {
             const dates = await response.json();
-            appState.availableDates = dates;
+            const normalized = (Array.isArray(dates) ? dates : [])
+                .map(d => String(d ?? '').trim())
+                .map(d => {
+                    const digits = d.replace(/\D/g, '');
+                    if (/^\d{6}$/.test(digits)) return digits;
+                    if (/^\d{8}$/.test(digits)) return digits.slice(2);
+                    return null;
+                })
+                .filter(Boolean)
+                .sort()
+                .reverse();
+            appState.availableDates = normalized;
             return;
         }
     } catch (error) {
-        console.warn("dates.json을 찾을 수 없습니다. 기본 목록을 사용합니다.");
+        console.warn('dates.json을 찾을 수 없습니다. 기본 목록을 사용합니다.');
     }
     
-    // Fallback: 하드코딩된 날짜 목록 (개발용)
+    // 3) 최종 폴백: 하드코딩된 날짜 목록 (개발용)
     const hardcodedDates = ['250825', '250822', '250821', '250820', '250819', '250818', '250814', '250813', '250811', '250809'];
     appState.availableDates = hardcodedDates;
 }
@@ -30,7 +71,16 @@ export async function fetchAvailableDates() {
  */
 export function initializeFiltersAndOptions() {
     appState.activeFilters = {
-        title: [], model: [], submodel: [], price: [], km: [], fuel: [], year: []
+        // 기본 필터 초기화
+        title: [],
+        model: [],
+        submodel: [],
+        price: [],
+        km: [],
+        fuel: [],
+        auction_name: [],
+        region: [],
+        year: []
     };
     
     // 연료 타입 추출
@@ -157,6 +207,18 @@ export function filterData(data, activeFilters, searchQuery, budgetRange) {
             if (isNaN(year) || year < minYear || year > maxYear) return false;
         }
         
+        // 경매장 필터
+        const auctionArr = activeFilters.auction_name || [];
+        const auctionMatch = auctionArr.length === 0
+            ? true
+            : auctionArr.includes(row.auction_name);
+
+        // 지역 필터
+        const regionArr = activeFilters.region || [];
+        const regionMatch = regionArr.length === 0
+            ? true
+            : regionArr.includes(row.region);
+        
         // 제조사(차종) 필터
         const titleArr = activeFilters.title || [];
         const brandMatch = titleArr.length === 0
@@ -178,7 +240,13 @@ export function filterData(data, activeFilters, searchQuery, budgetRange) {
         // 자유 검색어 필터
         const query = (searchQuery || '').toLowerCase();
         const searchMatch = query === ''
-            || (row.title && String(row.title).toLowerCase().includes(query));
+            || (
+                (row.title && String(row.title).toLowerCase().includes(query))
+                || (row.subtitle && String(row.subtitle).toLowerCase().includes(query))
+                || (row.region && String(row.region).toLowerCase().includes(query))
+                || (row.auction_name && String(row.auction_name).toLowerCase().includes(query))
+                || (row.car_number && String(row.car_number).toLowerCase().includes(query))
+            );
             
         // 연료 필터
         const fuelArr = activeFilters.fuel || [];
@@ -220,7 +288,17 @@ export function filterData(data, activeFilters, searchQuery, budgetRange) {
             }
         }
         
-        return brandMatch && modelMatch && submodelMatch && searchMatch && fuelMatch && kmMatch && priceMatch;
+        return (
+            brandMatch &&
+            modelMatch &&
+            submodelMatch &&
+            auctionMatch &&
+            regionMatch &&
+            searchMatch &&
+            fuelMatch &&
+            kmMatch &&
+            priceMatch
+        );
     });
 }
 

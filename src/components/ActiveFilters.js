@@ -10,7 +10,9 @@ const ActiveFilters = ({ activeFilters, budgetRange, onRemoveFilter, onRemoveBud
         submodel: '세부모델',
         fuel: '연료',
         km: '주행거리',
-        price: '가격'
+        price: '가격',
+        auction_name: '경매장',
+        region: '지역'
     };
 
     const handleRemoveFilterValue = (filterType, value) => {

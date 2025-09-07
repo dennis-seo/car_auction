@@ -34,6 +34,8 @@ const CarTable = ({
                     const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
                     return match ? match[1] : null;
                 }).filter(Boolean))].sort(),
+                auction_name: [...new Set(data.map(row => row.auction_name).filter(Boolean))].sort(),
+                region: [...new Set(data.map(row => row.region).filter(Boolean))].sort(),
                 km: Object.keys(mileageRanges),
                 price: Object.keys(priceRanges)
             });
@@ -59,7 +61,7 @@ const CarTable = ({
                         options={tableFilters[key]}
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
-                        isFilterable={["fuel", "title", "km", "price", "year"].includes(key)}
+                        isFilterable={["fuel", "title", "km", "price", "year", "auction_name", "region"].includes(key)}
                     />
                 ))}
             </tr>
