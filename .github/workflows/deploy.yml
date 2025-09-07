@@ -59,6 +59,13 @@ jobs:
       - name: Build React app
         run: npm run build
 
+      # Ensure SPA fallback so deep links work on GitHub Pages
+      - name: Add 404 fallback
+        run: |
+          if [ -f "build/index.html" ]; then
+            cp build/index.html build/404.html
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
