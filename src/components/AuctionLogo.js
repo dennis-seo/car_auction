@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAuctionLogo, getAuctionNames } from '../utils/getAuctionLogo';
+import { getAuctionLogo, getAuctionNames } from '../utils/getAuctionLogo.js';
 
 /**
  * 경매장 로고 표시 컴포넌트
