@@ -28,17 +28,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: Install Python dependencies
-        run: pip install requests
-
-      - name: Download auction data
-        run: python download_if_changed.py
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -54,7 +43,6 @@ jobs:
           if [ -d "sources" ]; then
             cp sources/*.csv public/sources/ 2>/dev/null || echo "No CSV files to copy"
           fi
-          python generate_dates.py
 
       - name: Build React app
         run: npm run build
