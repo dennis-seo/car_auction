@@ -53,7 +53,10 @@ const FuelFilter = ({ data, activeFilters, onUpdateFilter }) => {
     return result;
   }, [definedFuelTypes, rawFuelCounts]);
 
-  const activeFuelValues = activeFilters?.fuel || [];
+  // Memoize active fuel values to avoid creating a new array on each render
+  const activeFuelValues = useMemo(() => {
+    return Array.isArray(activeFilters?.fuel) ? activeFilters.fuel : [];
+  }, [activeFilters]);
 
   const isGroupActive = useCallback((groupLabel) => {
     if (groupLabel === '전체') return activeFuelValues.length === 0;

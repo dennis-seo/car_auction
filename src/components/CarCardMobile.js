@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { getAuctionLogo } from 'utils/getAuctionLogo';
+import { getAuctionLogo } from '../utils/getAuctionLogo';
 
 /**
  * 모바일용 차량 카드 컴포넌트
