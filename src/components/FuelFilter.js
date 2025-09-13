@@ -84,12 +84,15 @@ const FuelFilter = ({ data, activeFilters, onUpdateFilter }) => {
       variants = definedFuelTypes[groupLabel] || [groupLabel];
     }
 
-    // 현재 그룹이 활성화되어 있으면 변형들을 모두 제거, 아니면 모두 추가(toggle)
-    const anyActive = variants.some(v => activeFuelValues.includes(v));
-    if (anyActive) {
+    // 그룹 토글 정책
+    // - 모든 변형이 활성화되어 있으면 해당 변형들만 제거
+    // - 아니면 현재 활성 값에 변형들을 합집합으로 추가
+    const allActive = variants.length > 0 && variants.every(v => activeFuelValues.includes(v));
+    if (allActive) {
       variants.forEach(v => onUpdateFilter('fuel', v, 'toggle'));
     } else {
-      variants.forEach(v => onUpdateFilter('fuel', v, 'toggle'));
+      const union = Array.from(new Set([...(activeFuelValues || []), ...variants]));
+      onUpdateFilter('fuel', union, 'set');
     }
   }, [activeFuelValues, definedFuelTypes, rawFuelCounts, onUpdateFilter]);
 

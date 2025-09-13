@@ -1,7 +1,9 @@
 // 중앙 API 설정 파일
-// 메인 도메인을 여기에서만 관리합니다.
+// 메인 도메인을 환경변수로 관리합니다. (CRA: 변수명은 REACT_APP_ 접두사 필수)
 
-export const API_BASE_URL = 'https://car-auction-849074372493.asia-northeast3.run.app';
+export const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL ||
+  'https://car-auction-849074372493.asia-northeast3.run.app';
 
 export const API_ENDPOINTS = {
   dates: `${API_BASE_URL}/api/dates`,
