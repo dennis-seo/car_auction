@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
+import Papa from 'papaparse';
 import DateSelector from './components/DateSelector';
 import MainSearch from './components/MainSearch';
 import ActiveFilters from './components/ActiveFilters';
@@ -64,32 +65,36 @@ function App() {
         setMessage(`'${date}'의 경매 데이터를 불러오는 중입니다...`);
         
         try {
-            // 서버 DB에서 데이터 가져오기 (JSON)
+            // 서버에서 CSV를 직접 파싱 (임시 복구)
             const apiUrl = API_ENDPOINTS.auctionsByDate(date);
-            const res = await fetch(apiUrl, { cache: 'no-cache' });
-            if (!res.ok) throw new Error(`데이터 요청 실패: ${res.status}`);
-            const payload = await res.json();
-            const newData = Array.isArray(payload) ? payload
-                : Array.isArray(payload?.data) ? payload.data
-                : [];
-
-            if (newData.length > 0) {
-                setData(newData);
-                appState.allData = newData;
-                initializeFiltersAndOptions();
-                setActiveFilters({
-                    title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
-                });
-                setSearchQuery('');
-                setBudgetRange(null);
-                setYearRange(null);
-                setMessage('');
-                setShowMainSearch(true);
-                console.log('데이터 로드 완료, showMainSearch:', true);
-            } else {
-                setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
-                console.warn('데이터가 비어있습니다:', payload);
-            }
+            Papa.parse(apiUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        const newData = results.data;
+                        setData(newData);
+                        appState.allData = newData;
+                        initializeFiltersAndOptions();
+                        setActiveFilters({
+                            title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
+                        });
+                        setSearchQuery('');
+                        setBudgetRange(null);
+                        setYearRange(null);
+                        setMessage('');
+                        setShowMainSearch(true);
+                    } else {
+                        setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
+                        console.warn('CSV 데이터가 비어있습니다:', results);
+                    }
+                },
+                error: function(error) {
+                    console.error('CSV 파싱 오류:', error);
+                    setMessage(`오류: '${date}' 날짜의 데이터를 읽을 수 없습니다. 잠시 후 다시 시도해주세요.`);
+                }
+            });
         } catch (error) {
             console.error('데이터 로드 오류:', error);
             setMessage('데이터를 불러오는 중 오류가 발생했습니다.');
