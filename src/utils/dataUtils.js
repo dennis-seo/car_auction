@@ -1,4 +1,5 @@
 import { appState, mileageRanges, priceRanges } from './appState';
+import { API_ENDPOINTS } from './apiConfig';
 
 // 공용 정적 데이터 경로 - 라우트가 바뀌어도 항상 앱 루트 기준으로 로드되도록 PUBLIC_URL을 사용
 const SEARCH_TREE_URL = `${process.env.PUBLIC_URL || ''}/data/search_tree.json`;
@@ -12,7 +13,7 @@ let cachedSearchTree = null;
  */
 export async function fetchAvailableDates() {
     // 1) 우선순위: 제공된 API에서 날짜 목록 조회
-    const primaryApi = 'https://car-auction-849074372493.asia-northeast3.run.app/api/dates';
+    const primaryApi = API_ENDPOINTS.dates;
     try {
         const res = await fetch(primaryApi, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`API 호출 실패: ${res.status}`);
@@ -38,35 +39,11 @@ export async function fetchAvailableDates() {
         appState.availableDates = normalized.sort().reverse();
         if (appState.availableDates.length > 0) return; // 성공 시 반환
     } catch (error) {
-        console.warn('[dates] API 호출 실패, 정적 JSON으로 폴백합니다.', error);
+        console.warn('[dates] API 호출 실패', error);
+        // 실패 시 명시적으로 비워두고 호출자에게 오류를 전달
+        appState.availableDates = [];
+        throw error;
     }
-    
-    // 2) 폴백: 정적 JSON(/sources/dates.json)
-    try {
-        const response = await fetch('/sources/dates.json', { cache: 'no-cache' });
-        if (response.ok) {
-            const dates = await response.json();
-            const normalized = (Array.isArray(dates) ? dates : [])
-                .map(d => String(d ?? '').trim())
-                .map(d => {
-                    const digits = d.replace(/\D/g, '');
-                    if (/^\d{6}$/.test(digits)) return digits;
-                    if (/^\d{8}$/.test(digits)) return digits.slice(2);
-                    return null;
-                })
-                .filter(Boolean)
-                .sort()
-                .reverse();
-            appState.availableDates = normalized;
-            return;
-        }
-    } catch (error) {
-        console.warn('dates.json을 찾을 수 없습니다. 기본 목록을 사용합니다.');
-    }
-    
-    // 3) 최종 폴백: 하드코딩된 날짜 목록 (개발용)
-    const hardcodedDates = ['250825', '250822', '250821', '250820', '250819', '250818', '250814', '250813', '250811', '250809'];
-    appState.availableDates = hardcodedDates;
 }
 
 /**

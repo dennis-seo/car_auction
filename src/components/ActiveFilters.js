@@ -68,6 +68,57 @@ const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, onRemoveFilter
             if (key === 'year') return; // 연식은 위에서 처리
 
             const values = activeFilters[key] || [];
+
+            // 연료 특별 처리: '가솔린' 그룹 클릭 시 '가솔린'/'휘발유'를 하나의 알약으로 묶어 표시
+            if (key === 'fuel') {
+                const hasGasoline = values.includes('가솔린');
+                const hasHuiBalYu = values.includes('휘발유');
+
+                // 두 값이 모두 활성화된 경우 하나의 알약만 노출하고, 제거 시 둘 다 해제
+                if (hasGasoline && hasHuiBalYu) {
+                    pills.push(
+                        <span key="fuel-가솔린" className="filter-pill">
+                            <span className="filter-pill-label">{FILTER_LABELS[key]}</span>
+                            <span className="filter-pill-value">가솔린</span>
+                            <button
+                                className="filter-pill-remove"
+                                type="button"
+                                aria-label="필터 제거"
+                                onClick={() => {
+                                    // 그룹 해제 시 두 값 모두 토글하여 제거
+                                    onRemoveFilter('fuel', '가솔린', 'toggle');
+                                    onRemoveFilter('fuel', '휘발유', 'toggle');
+                                }}
+                            >
+                                ×
+                            </button>
+                        </span>
+                    );
+
+                    // 나머지 연료 값들(디젤/하이브리드 등) 개별 알약 표시
+                    values
+                        .filter(v => v !== '가솔린' && v !== '휘발유')
+                        .forEach(val => {
+                            pills.push(
+                                <span key={`${key}-${val}`} className="filter-pill">
+                                    <span className="filter-pill-label">{FILTER_LABELS[key]}</span>
+                                    <span className="filter-pill-value">{val}</span>
+                                    <button
+                                        className="filter-pill-remove"
+                                        type="button"
+                                        aria-label="필터 제거"
+                                        onClick={() => handleRemoveFilterValue(key, val)}
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            );
+                        });
+                    return; // fuel 처리 완료
+                }
+            }
+
+            // 기본: 각 값마다 알약 생성
             values.forEach(val => {
                 pills.push(
                     <span key={`${key}-${val}`} className="filter-pill">
