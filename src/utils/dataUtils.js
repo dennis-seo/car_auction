@@ -294,10 +294,52 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
 /**
  * 필터링된 데이터를 정렬합니다.
  */
-export function sortFilteredData(filteredData, activeFilters, lastSortedFilter) {
+export function sortFilteredData(filteredData, activeFilters, budgetRange, yearRange, lastSortedFilter) {
     const priceArr = activeFilters.price || [];
     const kmArr = activeFilters.km || [];
     
+    // 새로운 요구사항: 예산/연식 정렬 우선
+    const budgetActive = !!budgetRange;
+    const yearActive = (Array.isArray(activeFilters.year) && activeFilters.year.length === 2)
+        || (Array.isArray(yearRange) && yearRange.length === 2);
+    
+    const sortByPriceAsc = (list) =>
+        [...list].sort((a, b) => {
+            const ap = parseInt(a.price, 10);
+            const bp = parseInt(b.price, 10);
+            const aVal = isNaN(ap) ? Infinity : ap;
+            const bVal = isNaN(bp) ? Infinity : bp;
+            return aVal - bVal;
+        });
+    
+    const sortByYearDesc = (list) =>
+        [...list].sort((a, b) => {
+            const ay = parseInt(a.year, 10);
+            const by = parseInt(b.year, 10);
+            const aVal = isNaN(ay) ? 0 : ay;
+            const bVal = isNaN(by) ? 0 : by;
+            return bVal - aVal;
+        });
+    
+    if (budgetActive && yearActive) {
+        if (lastSortedFilter === 'budget') {
+            return sortByPriceAsc(filteredData);
+        } else if (lastSortedFilter === 'year') {
+            return sortByYearDesc(filteredData);
+        }
+        // 기본값: 예산 기준
+        return sortByPriceAsc(filteredData);
+    }
+    
+    if (budgetActive) {
+        return sortByPriceAsc(filteredData);
+    }
+    
+    if (yearActive) {
+        return sortByYearDesc(filteredData);
+    }
+    
+    // 기존 테이블 헤더 정렬 로직 유지 (price/km 기반)
     if (priceArr.length > 0 && kmArr.length > 0 && lastSortedFilter) {
         const sorted = [...filteredData];
         if (lastSortedFilter === 'price') {

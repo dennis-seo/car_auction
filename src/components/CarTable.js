@@ -23,7 +23,7 @@ const CarTable = ({
         if (!data || data.length === 0) return [];
         
         const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
-        return sortFilteredData(filtered, activeFilters, appState.lastSortedFilter);
+        return sortFilteredData(filtered, activeFilters, budgetRange, yearRange, appState.lastSortedFilter);
     }, [data, activeFilters, searchQuery, budgetRange, yearRange]);
 
     useEffect(() => {

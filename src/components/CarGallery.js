@@ -12,7 +12,7 @@ const CarGallery = ({ data, activeFilters, searchQuery, budgetRange, yearRange, 
     const filteredData = useMemo(() => {
         if (!data || data.length === 0) return [];
         const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
-        return sortFilteredData(filtered, activeFilters, appState.lastSortedFilter);
+        return sortFilteredData(filtered, activeFilters, budgetRange, yearRange, appState.lastSortedFilter);
     }, [data, activeFilters, searchQuery, budgetRange, yearRange]);
 
     // 이미지 클릭 핸들러

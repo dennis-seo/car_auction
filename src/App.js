@@ -119,6 +119,14 @@ function App() {
                 }
             }
             
+            // 연식 필터가 설정되면 최근 정렬 우선순위를 'year'로 갱신
+            if (filterType === 'year') {
+                const arr = newFilters.year;
+                if (Array.isArray(arr) && arr.length === 2) {
+                    appState.lastSortedFilter = 'year';
+                }
+            }
+            
             return newFilters;
         });
     }, []);
@@ -180,8 +188,18 @@ function App() {
                     yearRange={yearRange}
                     onUpdateFilter={updateFilter}
                     onSearchQueryChange={setSearchQuery}
-                    onBudgetRangeChange={setBudgetRange}
-                    onYearRangeChange={setYearRange}
+                    onBudgetRangeChange={(range) => {
+                        setBudgetRange(range);
+                        if (range) {
+                            appState.lastSortedFilter = 'budget';
+                        }
+                    }}
+                    onYearRangeChange={(range) => {
+                        setYearRange(range);
+                        if (Array.isArray(range) && range.length === 2) {
+                            appState.lastSortedFilter = 'year';
+                        }
+                    }}
                 />
             )}
 
