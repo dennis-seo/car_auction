@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
+import { FUEL_GROUPS } from '../utils/fuelGroups';
 
 /**
  * 연료 필터 아이콘 버튼 컴포넌트
@@ -16,14 +17,8 @@ const FuelFilter = ({ data, activeFilters, onUpdateFilter }) => {
     return counts;
   }, [data]);
 
-  // 그룹 정의 (바닐라 참조)
-  const definedFuelTypes = useMemo(() => ({
-    '가솔린': ['가솔린', '휘발유'],
-    '디젤': ['디젤', '경유'],
-    '하이브리드': ['하이브리드', '가솔린하이브리드'],
-    'LPG': ['LPG'],
-    '전기': ['전기']
-  }), []);
+  // 그룹 정의 (공유 유틸 사용)
+  const definedFuelTypes = useMemo(() => FUEL_GROUPS, []);
 
   const fuelIcons = useMemo(() => ({
     '가솔린': '⛽',
