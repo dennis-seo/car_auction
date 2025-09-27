@@ -4,7 +4,7 @@ import ModelSelector from './ModelSelector';
 import SubmodelSelector from './SubmodelSelector';
 import BudgetSlider from './BudgetSlider';
 import YearSlider from './YearSlider';
-import FuelFilter from './FuelFilter';
+import DynamicFilter from './FuelFilter';
 
 /**
  * 메인 검색 영역 컴포넌트
@@ -101,7 +101,7 @@ const MainSearch = ({
                     </span>
                 </div>
             </div>
-            <FuelFilter 
+            <DynamicFilter 
                 data={data}
                 activeFilters={activeFilters}
                 onUpdateFilter={onUpdateFilter}

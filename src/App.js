@@ -13,6 +13,7 @@ import DateLoadError from './components/DateLoadError';
 import { initializeFiltersAndOptions, fetchAvailableDates } from './utils/dataUtils';
 import { appState } from './utils/appState';
 import { API_ENDPOINTS } from './utils/apiConfig';
+import auctionManager from './utils/auctionManager';
 
 function App() {
     // 앱 상태 관리
@@ -85,6 +86,11 @@ function App() {
                         setYearRange(null);
                         setMessage('');
                         setShowMainSearch(true);
+
+                        // AuctionManager 상태 로그 출력
+                        console.log(`[App] 데이터 로드 완료 - 총 ${newData.length}개 차량`);
+                        console.log('[App] 경매장별 정보:', auctionManager.getVehicleCountsByAuction());
+                        console.log('[App] 필터 모드:', auctionManager.getFilterMode());
                     } else {
                         setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
                         console.warn('CSV 데이터가 비어있습니다:', results);
@@ -209,6 +215,7 @@ function App() {
                 activeFilters={activeFilters}
                 budgetRange={budgetRange}
                 searchQuery={searchQuery}
+                data={data}
                 onRemoveFilter={updateFilter}
                 onRemoveBudgetRange={() => setBudgetRange(null)}
                 onRemoveSearchQuery={handleRemoveSearchQuery}

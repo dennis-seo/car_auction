@@ -31,6 +31,9 @@ const CarTable = ({
         if (data && data.length > 0) {
             setTableFilters({
                 fuel: [...new Set(data.map(row => row.fuel).filter(Boolean))].sort(),
+                vehicleType: [...new Set(data.map(row => 
+                    row.vehicleType || row.usage || row.type || row.purpose || row.fuel
+                ).filter(Boolean))].sort(),
                 title: [...new Set(data.map(row => {
                     const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
                     return match ? match[1] : null;
@@ -62,7 +65,7 @@ const CarTable = ({
                         options={tableFilters[key]}
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
-                        isFilterable={["fuel", "title", "km", "price", "year", "auction_name", "region"].includes(key)}
+                        isFilterable={["fuel", "vehicleType", "title", "km", "price", "year", "auction_name", "region"].includes(key)}
                     />
                 ))}
             </tr>

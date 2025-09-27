@@ -1,5 +1,6 @@
 import { appState, mileageRanges, priceRanges } from './appState';
 import { API_ENDPOINTS } from './apiConfig';
+import auctionManager from './auctionManager';
 
 // 상수 정의
 const DATE_FORMATS = {
@@ -89,6 +90,9 @@ export async function fetchAvailableDates() {
  * 데이터 로드 후 필터링 옵션을 초기화합니다.
  */
 export function initializeFiltersAndOptions() {
+    // AuctionManager 초기화
+    auctionManager.initializeFromData(appState.allData);
+    
     appState.activeFilters = {
         // 기본 필터 초기화
         title: [],
@@ -97,6 +101,7 @@ export function initializeFiltersAndOptions() {
         price: [],
         km: [],
         fuel: [],
+        vehicleType: [], 
         auction_name: [],
         region: [],
         year: []
@@ -104,6 +109,11 @@ export function initializeFiltersAndOptions() {
     
     // 연료 타입 추출
     appState.fuelTypes = [...new Set(appState.allData.map(row => row.fuel).filter(Boolean))].sort();
+    
+    // 차량 용도 타입 추출 (오토허브 경매장용)
+    appState.vehicleTypes = [...new Set(appState.allData.map(row => 
+        row.vehicleType || row.usage || row.type || row.purpose || row.fuel
+    ).filter(Boolean))].sort();
     
     // 차량 브랜드 추출 (제목에서 [브랜드] 패턴)
     appState.carBrands = [...new Set(appState.allData.map(row => {
@@ -118,6 +128,11 @@ export function initializeFiltersAndOptions() {
     
     appState.yearMin = years.length > 0 ? Math.min(...years) : DEFAULT_YEAR_RANGE.min;
     appState.yearMax = years.length > 0 ? Math.max(...years) : DEFAULT_YEAR_RANGE.max;
+
+    // AuctionManager 디버그 정보 출력
+    if (process.env.NODE_ENV === 'development') {
+        auctionManager.debugInfo();
+    }
 }
 
 /**
@@ -259,16 +274,21 @@ function checkLocationFilters(row, activeFilters) {
 function checkVehicleFilters(row, activeFilters) {
     const titleArr = activeFilters.title || [];
     const brandMatch = titleArr.length === 0
-        || (row.title && titleArr.some(val => row.title.includes(`[${val}]`)));
+        || (row.title && titleArr.some(val => row.title.includes(val)));
         
     const modelArr = activeFilters.model || [];
     const modelMatch = modelArr.length === 0
-        || (row.title && modelArr.some(val => row.title.includes(val)));
+        || (row.title && modelArr.some(val => {
+            // 모델명에서 괄호 부분 제거 (예: "레인지로버 이보크(L551) (19년~현재)" → "레인지로버 이보크")
+            const cleanModelName = val.replace(/\s*\([^)]*\)\s*/g, '').trim();
+            return row.title.includes(cleanModelName);
+        }));
         
     const submodelArr = activeFilters.submodel || [];
     const submodelMatch = submodelArr.length === 0
         || (row.title && submodelArr.some(val => {
-            const cleanTrimName = val.replace(/\s*\([^)]*\)\s*/g, '').trim();
+            // 세부트림명에서 마지막 괄호만 제거 (예: "싼타페(DM) (12년~15년)" → "싼타페(DM)")
+            const cleanTrimName = val.replace(/\s*\([^)]*\)\s*$/, '').trim();
             return row.title.includes(cleanTrimName);
         }));
     
@@ -290,12 +310,17 @@ function checkSearchFilter(row, searchQuery) {
 }
 
 /**
- * 연료/주행거리/가격 필터 검사
+ * 연료/차량용도/주행거리/가격 필터 검사
  */
 function checkSpecFilters(row, activeFilters) {
-    // 연료 필터
+    // 연료 필터 (기존 호환성 유지)
     const fuelArr = activeFilters.fuel || [];
     const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
+    
+    // 차량 용도 필터 (오토허브 경매장용)
+    const vehicleTypeArr = activeFilters.vehicleType || [];
+    const vehicleType = row.vehicleType || row.usage || row.type || row.purpose || row.fuel;
+    const vehicleTypeMatch = vehicleTypeArr.length === 0 || vehicleTypeArr.includes(vehicleType);
     
     // 주행거리 필터
     const kmArr = activeFilters.km || [];
@@ -323,7 +348,7 @@ function checkSpecFilters(row, activeFilters) {
         });
     }
     
-    return fuelMatch && kmMatch && priceMatch;
+    return fuelMatch && vehicleTypeMatch && kmMatch && priceMatch;
 }
 
 /**

@@ -1542,3 +1542,128 @@ tbody tr:hover {
     font-weight: 600;
     color: #2c3e50;
 }
+
+/* 차량 용도 필터 스타일 (연료 필터와 동일한 스타일링) */
+.vehicle-type-filter-section {
+    margin-top: 20px;
+    padding: 18px 20px;
+    background: #ffffff;
+    border: 1px solid #e8f0ff;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(33, 75, 166, 0.06);
+}
+
+.vehicle-type-filter-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 12px;
+    justify-items: stretch;
+}
+
+.vehicle-type-option {
+    position: relative;
+    display: grid;
+    grid-template-rows: 30px auto auto;
+    align-items: center;
+    justify-items: center;
+    padding: 6px 0px 6px;
+    border: 2px solid #e1e5ea;
+    border-radius: 14px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.04s ease;
+    font-size: 12px;
+}
+
+.vehicle-type-option:hover {
+    border-color: #b6d4fe;
+    box-shadow: 0 6px 16px rgba(25, 118, 210, 0.12);
+}
+
+.vehicle-type-option.active {
+    border-color: #1976d2;
+    background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+    box-shadow: 0 8px 22px rgba(25, 118, 210, 0.14);
+}
+
+.vehicle-type-option-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.vehicle-type-option-label {
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+    word-break: keep-all;
+    color: #273142;
+    font-size: 13px;
+}
+
+.vehicle-type-option-count {
+    margin-top: 2px;
+    font-size: 11px;
+    color: #8a94a6;
+}
+
+.vehicle-type-option-check {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.vehicle-type-option.active .vehicle-type-option-check {
+    background: #1976d2;
+}
+
+.vehicle-type-option.active .vehicle-type-option-check::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 3px;
+    width: 6px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.vehicle-type-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.vehicle-type-icon {
+    font-size: 20px;
+}
+
+.vehicle-type-title h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+@media (max-width: 560px) {
+    .vehicle-type-filter-section {
+        margin-top: 16px;
+        padding: 16px 20px;
+    }
+    .vehicle-type-filter-options {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .vehicle-type-option {
+        height: 76px;
+        padding: 8px 6px 8px;
+    }
+    .vehicle-type-option-icon { font-size: 16px; }
+    .vehicle-type-option-label { font-size: 13px; }
+    .vehicle-type-option-count { font-size: 11px; }
+}
