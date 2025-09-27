@@ -13,12 +13,31 @@ class AuctionManager {
      * @param {Array} data - 서버에서 받아온 데이터 배열
      */
     initializeFromData(data) {
+        console.log('[AuctionManager] 초기화 시작:', {
+            previousInitialized: this.isInitialized,
+            previousAuctionCount: this.auctionData.size,
+            previousAuctions: Array.from(this.auctionData.keys()),
+            newDataLength: Array.isArray(data) ? data.length : 0
+        });
+
         if (!Array.isArray(data)) {
             console.warn('[AuctionManager] 유효하지 않은 데이터입니다.');
+            this.isInitialized = false;
+            this.auctionData.clear();
             return;
         }
 
+        if (data.length === 0) {
+            console.warn('[AuctionManager] 빈 데이터 배열입니다.');
+            this.isInitialized = false;
+            this.auctionData.clear();
+            return;
+        }
+
+        // 기존 데이터 완전 초기화
+        this.isInitialized = false;
         this.auctionData.clear();
+        console.log('[AuctionManager] 기존 데이터 초기화 완료');
         
         // auction_name별로 정보 수집
         const auctionStats = new Map();
@@ -63,7 +82,24 @@ class AuctionManager {
         });
         
         this.isInitialized = true;
-        console.log('[AuctionManager] 경매장 정보 초기화 완료:', this.getAuctionNames());
+        
+        console.log('[AuctionManager] 경매장 정보 초기화 완료:', {
+            auctionNames: this.getAuctionNames(),
+            totalVehicles: this.getTotalVehicleCount(),
+            filterMode: this.getFilterMode(),
+            hasAutoHub: this.hasAutoHubAuction(),
+            auctionCounts: this.getVehicleCountsByAuction()
+        });
+    }
+
+    /**
+     * AuctionManager를 완전히 초기화합니다.
+     */
+    reset() {
+        console.log('[AuctionManager] 명시적 초기화 시작');
+        this.isInitialized = false;
+        this.auctionData.clear();
+        console.log('[AuctionManager] 명시적 초기화 완료');
     }
 
     /**

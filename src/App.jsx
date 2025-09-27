@@ -53,34 +53,68 @@ function App() {
 
     // 날짜 선택 시 데이터 로드
     const handleDateChange = useCallback(async (date) => {
+        console.log(`[App] 날짜 변경 요청: ${selectedDate} → ${date}`);
         setSelectedDate(date);
         
         if (!date) {
+            console.log('[App] 빈 날짜 선택, 데이터 초기화');
             setData([]);
+            appState.allData = [];
+            auctionManager.reset(); // AuctionManager 초기화
             setMessage('날짜를 선택하면 해당일의 경매 목록을 불러옵니다.');
             setShowMainSearch(false);
             return;
         }
 
         setMessage(`'${date}'의 경매 데이터를 불러오는 중입니다...`);
+        console.log(`[App] API 호출 시작: ${date}`);
+        
+        // 새 데이터 로드 전 AuctionManager 초기화
+        console.log('[App] 새 날짜 데이터 로드 전 AuctionManager 초기화');
+        auctionManager.reset();
         
         try {
-            // JSON API에서 데이터 가져오기
-            const apiUrl = API_ENDPOINTS.auctionsByDate(date);
-            const response = await fetch(apiUrl, { cache: 'no-cache' });
+            // JSON API에서 데이터 가져오기 - 강화된 캐시 방지
+            const apiUrl = `${API_ENDPOINTS.auctionsByDate(date)}?_t=${Date.now()}`;
+            console.log(`[App] API URL: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, { 
+                cache: 'no-cache',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+            
+            console.log(`[App] API 응답 상태: ${response.status} ${response.statusText}`);
             
             if (!response.ok) {
                 throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
             }
             
             const jsonData = await response.json();
+            console.log(`[App] API 응답 데이터:`, {
+                date: jsonData.date,
+                sourceFile: jsonData.source_filename,
+                rowCount: jsonData.row_count,
+                itemsLength: jsonData.items?.length,
+                sampleItem: jsonData.items?.[0]
+            });
             
             // JSON 응답에서 items 배열 추출
             if (jsonData && jsonData.items && Array.isArray(jsonData.items) && jsonData.items.length > 0) {
                 const newData = jsonData.items;
+                console.log(`[App] 새 데이터 설정: ${newData.length}개 차량`);
+                
+                // 상태 업데이트
                 setData(newData);
                 appState.allData = newData;
+                
+                console.log('[App] 필터 및 옵션 초기화 시작');
                 initializeFiltersAndOptions();
+                
+                // 모든 필터 초기화
                 setActiveFilters({
                     title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
                 });
@@ -90,21 +124,33 @@ function App() {
                 setMessage('');
                 setShowMainSearch(true);
 
-                // AuctionManager 상태 로그 출력
-                console.log(`[App] 데이터 로드 완료 - 총 ${newData.length}개 차량 (${jsonData.date || date})`);
-                console.log(`[App] 소스 파일: ${jsonData.source_filename || '알 수 없음'}`);
-                console.log(`[App] 총 행 수: ${jsonData.row_count || newData.length}`);
-                console.log('[App] 경매장별 정보:', auctionManager.getVehicleCountsByAuction());
-                console.log('[App] 필터 모드:', auctionManager.getFilterMode());
+                // 상세 로그 출력
+                console.log(`[App] 데이터 로드 완료:`);
+                console.log(`  - 날짜: ${jsonData.date || date}`);
+                console.log(`  - 소스 파일: ${jsonData.source_filename || '알 수 없음'}`);
+                console.log(`  - 총 행 수: ${jsonData.row_count || newData.length}`);
+                console.log(`  - 실제 아이템 수: ${newData.length}`);
+                console.log(`  - 첫 번째 차량:`, newData[0]);
+                console.log('  - 경매장별 정보:', auctionManager.getVehicleCountsByAuction());
+                console.log('  - 필터 모드:', auctionManager.getFilterMode());
+                console.log('[App] 컴포넌트 상태 업데이트 완료');
             } else {
+                console.warn('[App] 데이터 없음 또는 빈 응답:', jsonData);
+                setData([]);
+                appState.allData = [];
+                auctionManager.reset(); // 빈 데이터 시 AuctionManager 초기화
                 setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
-                console.warn('JSON 응답에 데이터가 없습니다:', jsonData);
+                setShowMainSearch(false);
             }
         } catch (error) {
-            console.error('데이터 로드 오류:', error);
+            console.error('[App] 데이터 로드 오류:', error);
+            setData([]);
+            appState.allData = [];
+            auctionManager.reset(); // 오류 시 AuctionManager 초기화
             setMessage(`오류: '${date}' 날짜의 데이터를 읽을 수 없습니다. 잠시 후 다시 시도해주세요.`);
+            setShowMainSearch(false);
         }
-    }, []);
+    }, [selectedDate]);
 
     // 필터 업데이트
     const updateFilter = useCallback((filterType, value, action = 'toggle') => {

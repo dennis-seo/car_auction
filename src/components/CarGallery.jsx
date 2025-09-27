@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { filterData, sortFilteredData } from '../utils/dataUtils';
 import { appState } from '../utils/appState';
-import CarCardMobile from './CarCardMobile';
-import CarCardDesktop from './CarCardDesktop';
+import CarCardMobile from './CarCardMobile.jsx';
+import CarCardDesktop from './CarCardDesktop.jsx';
 
 /**
  * 차량 갤러리 컴포넌트
@@ -19,10 +19,30 @@ const CarGallery = ({
 }) => {
     // 필터링된 데이터 계산
     const filteredData = useMemo(() => {
-        if (!data || data.length === 0) return [];
+        console.log('[CarGallery] 데이터 필터링 시작:', {
+            originalDataLength: data?.length || 0,
+            activeFilters,
+            searchQuery,
+            budgetRange,
+            yearRange
+        });
+        
+        if (!data || data.length === 0) {
+            console.log('[CarGallery] 원본 데이터가 없음');
+            return [];
+        }
         
         const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
-        return sortFilteredData(filtered, activeFilters, budgetRange, yearRange, appState.lastSortedFilter);
+        const sorted = sortFilteredData(filtered, activeFilters, budgetRange, yearRange, appState.lastSortedFilter);
+        
+        console.log('[CarGallery] 데이터 필터링 완료:', {
+            originalLength: data.length,
+            filteredLength: filtered.length,
+            finalLength: sorted.length,
+            sampleData: data[0]
+        });
+        
+        return sorted;
     }, [data, activeFilters, searchQuery, budgetRange, yearRange]);
 
     // 렌더링할 카드 컴포넌트 결정
