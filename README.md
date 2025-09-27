@@ -25,3 +25,11 @@ E F 큰사고
 분당센터 (SUV/승합/...)
 시화센터 (전 차종)
 양상/인천센터 (위탁...)
+
+
+
+1. API 호출 방식: src/utils/apiConfig.js에서 설정된 REST API 엔드포인트 사용
+ - 날짜 목록: ${API_BASE_URL}/api/dates
+ - 경매 데이터: ${API_BASE_URL}/api/csv/${date}
+2. 데이터 처리: Papa.parse를 사용한 CSV 파싱으로 클라이언트에서 처리
+3. 현재 서버: Google Cloud Run에서 호스팅 중
