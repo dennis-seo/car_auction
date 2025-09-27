@@ -162,6 +162,8 @@ function App() {
                 availableDates={availableDates}
                 selectedDate={selectedDate}
                 onDateChange={handleDateChange}
+                loading={!availableDates.length && !dateLoadError}
+                disabled={dateLoadError}
             />
             
             {dateLoadError ? (

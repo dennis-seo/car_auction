@@ -1,12 +1,59 @@
 import { appState, mileageRanges, priceRanges } from './appState';
 import { API_ENDPOINTS } from './apiConfig';
 
+// 상수 정의
+const DATE_FORMATS = {
+    YYMMDD: /^\d{6}$/,
+    YYYYMMDD: /^\d{8}$/,
+    YYYY_MM_DD: /^(\d{4})[.-](\d{2})[.-](\d{2})$/
+};
+
+const DEFAULT_YEAR_RANGE = { min: 2000, max: 2026 };
+
+const CACHE_CONFIG = { cache: 'no-cache' };
+
 // 공용 정적 데이터 경로 - 라우트가 바뀌어도 항상 앱 루트 기준으로 로드되도록 PUBLIC_URL을 사용
 const SEARCH_TREE_URL = `${process.env.PUBLIC_URL || ''}/data/search_tree.json`;
 
 // 제조사 목록 캐시
 let cachedBrandList = null;
 let cachedSearchTree = null;
+
+// 유틸리티 함수들
+/**
+ * 안전한 정수 파싱 (NaN 대신 기본값 반환)
+ */
+function safeParseInt(value, defaultValue = 0) {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * 범위 체크 유틸리티
+ */
+function isInRange(value, min, max) {
+    return value >= min && (max === Infinity || value <= max);
+}
+
+/**
+ * 날짜 문자열을 yymmdd로 정규화하는 헬퍼 함수
+ */
+function normalizeDateString(dateStr) {
+    const digits = dateStr.replace(/\D/g, '');
+    if (DATE_FORMATS.YYMMDD.test(digits)) return digits;     // yymmdd
+    if (DATE_FORMATS.YYYYMMDD.test(digits)) return digits.slice(2); // yyyymmdd -> yymmdd
+    return null;
+}
+
+/**
+ * 배열에서 유효한 날짜만 추출하고 정규화
+ */
+function extractValidDates(dates) {
+    return dates
+        .map(d => String(d ?? '').trim())
+        .map(normalizeDateString)
+        .filter(Boolean);
+}
 
 /**
  * GitHub Pages에서 사용 가능한 날짜 목록을 가져옵니다.
@@ -15,7 +62,7 @@ export async function fetchAvailableDates() {
     // 1) 우선순위: 제공된 API에서 날짜 목록 조회
     const primaryApi = API_ENDPOINTS.dates;
     try {
-        const res = await fetch(primaryApi, { cache: 'no-cache' });
+        const res = await fetch(primaryApi, CACHE_CONFIG);
         if (!res.ok) throw new Error(`API 호출 실패: ${res.status}`);
         const payload = await res.json();
         
@@ -27,15 +74,7 @@ export async function fetchAvailableDates() {
         if (!Array.isArray(dates)) throw new Error('예상치 못한 응답 형식');
         
         // yymmdd로 정규화 후 유효한 값만 사용
-        const normalized = dates
-            .map(d => String(d ?? '').trim())
-            .map(d => {
-                const digits = d.replace(/\D/g, '');
-                if (/^\d{6}$/.test(digits)) return digits;     // yymmdd
-                if (/^\d{8}$/.test(digits)) return digits.slice(2); // yyyymmdd -> yymmdd
-                return null;
-            })
-            .filter(Boolean);
+        const normalized = extractValidDates(dates);
         appState.availableDates = normalized.sort().reverse();
         if (appState.availableDates.length > 0) return; // 성공 시 반환
     } catch (error) {
@@ -73,9 +112,12 @@ export function initializeFiltersAndOptions() {
     }).filter(Boolean))].sort();
     
     // 연식 범위 계산
-    const years = appState.allData.map(row => parseInt(row.year, 10)).filter(v => !isNaN(v));
-    appState.yearMin = years.length > 0 ? Math.min(...years) : 2000;
-    appState.yearMax = years.length > 0 ? Math.max(...years) : 2026;
+    const years = appState.allData
+        .map(row => safeParseInt(row.year))
+        .filter(year => year > 0);
+    
+    appState.yearMin = years.length > 0 ? Math.min(...years) : DEFAULT_YEAR_RANGE.min;
+    appState.yearMax = years.length > 0 ? Math.max(...years) : DEFAULT_YEAR_RANGE.max;
 }
 
 /**
@@ -85,7 +127,7 @@ export async function loadBrandList() {
     if (cachedBrandList) return cachedBrandList;
     try {
         // 앱이 서브 경로나 동적 라우트 하위에서 실행될 때 상대 경로가 깨지는 문제를 예방
-        const res = await fetch(SEARCH_TREE_URL, { cache: 'no-cache' });
+        const res = await fetch(SEARCH_TREE_URL, CACHE_CONFIG);
         if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
         
@@ -108,7 +150,7 @@ export async function loadSearchTree() {
     if (cachedSearchTree) return cachedSearchTree;
     try {
         // 앱 라우트가 바뀌어도 올바른 정적 파일 경로를 보장
-        const res = await fetch(SEARCH_TREE_URL, { cache: 'no-cache' });
+        const res = await fetch(SEARCH_TREE_URL, CACHE_CONFIG);
         if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
         cachedSearchTree = json;
@@ -137,11 +179,11 @@ export function normalizeDateToYYMMDD(input) {
     if (!input) return '';
     const str = String(input).trim();
     // 이미 yymmdd 형식
-    if (/^\d{6}$/.test(str)) return str;
+    if (DATE_FORMATS.YYMMDD.test(str)) return str;
     // yyyymmdd -> yymmdd
-    if (/^\d{8}$/.test(str)) return str.slice(2);
+    if (DATE_FORMATS.YYYYMMDD.test(str)) return str.slice(2);
     // yyyy.mm.dd 또는 yyyy-mm-dd
-    const m = str.match(/^(\d{4})[.-](\d{2})[.-](\d{2})$/);
+    const m = str.match(DATE_FORMATS.YYYY_MM_DD);
     if (m) {
         const yy = m[1].slice(2);
         const mm = m[2];
@@ -178,117 +220,165 @@ export function formatYYMMDDToLabel(input) {
 }
 
 /**
+ * 연식 필터 검사
+ */
+function checkYearFilter(row, activeFilters, yearRange) {
+    // activeFilters의 year 배열 체크
+    if (Array.isArray(activeFilters.year) && activeFilters.year.length === 2) {
+        const year = safeParseInt(row.year);
+        const [minYear, maxYear] = activeFilters.year;
+        if (year < minYear || year > maxYear) return false;
+    }
+    
+    // yearRange 슬라이더 체크
+    if (yearRange && Array.isArray(yearRange) && yearRange.length === 2) {
+        const year = safeParseInt(row.year);
+        const [minYear, maxYear] = yearRange;
+        if (year < minYear || year > maxYear) return false;
+    }
+    
+    return true;
+}
+
+/**
+ * 경매장/지역 필터 검사
+ */
+function checkLocationFilters(row, activeFilters) {
+    const auctionArr = activeFilters.auction_name || [];
+    const auctionMatch = auctionArr.length === 0 || auctionArr.includes(row.auction_name);
+
+    const regionArr = activeFilters.region || [];
+    const regionMatch = regionArr.length === 0 || regionArr.includes(row.region);
+    
+    return auctionMatch && regionMatch;
+}
+
+/**
+ * 브랜드/모델/서브모델 필터 검사
+ */
+function checkVehicleFilters(row, activeFilters) {
+    const titleArr = activeFilters.title || [];
+    const brandMatch = titleArr.length === 0
+        || (row.title && titleArr.some(val => row.title.includes(`[${val}]`)));
+        
+    const modelArr = activeFilters.model || [];
+    const modelMatch = modelArr.length === 0
+        || (row.title && modelArr.some(val => row.title.includes(val)));
+        
+    const submodelArr = activeFilters.submodel || [];
+    const submodelMatch = submodelArr.length === 0
+        || (row.title && submodelArr.some(val => {
+            const cleanTrimName = val.replace(/\s*\([^)]*\)\s*/g, '').trim();
+            return row.title.includes(cleanTrimName);
+        }));
+    
+    return brandMatch && modelMatch && submodelMatch;
+}
+
+/**
+ * 검색어 필터 검사
+ */
+function checkSearchFilter(row, searchQuery) {
+    const query = (searchQuery || '').toLowerCase();
+    return query === '' || (
+        (row.title && String(row.title).toLowerCase().includes(query)) ||
+        (row.subtitle && String(row.subtitle).toLowerCase().includes(query)) ||
+        (row.region && String(row.region).toLowerCase().includes(query)) ||
+        (row.auction_name && String(row.auction_name).toLowerCase().includes(query)) ||
+        (row.car_number && String(row.car_number).toLowerCase().includes(query))
+    );
+}
+
+/**
+ * 연료/주행거리/가격 필터 검사
+ */
+function checkSpecFilters(row, activeFilters) {
+    // 연료 필터
+    const fuelArr = activeFilters.fuel || [];
+    const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
+    
+    // 주행거리 필터
+    const kmArr = activeFilters.km || [];
+    let kmMatch = true;
+    if (kmArr.length > 0) {
+        const kmValue = safeParseInt(row.km);
+        kmMatch = kmArr.some(rangeKey => {
+            const range = mileageRanges[rangeKey].split('-');
+            const min = parseInt(range[0], 10);
+            const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
+            return isInRange(kmValue, min, max);
+        });
+    }
+    
+    // 가격 필터
+    const priceArr = activeFilters.price || [];
+    let priceMatch = true;
+    if (priceArr.length > 0) {
+        const priceValue = safeParseInt(row.price);
+        priceMatch = priceArr.some(rangeKey => {
+            const range = priceRanges[rangeKey].split('-');
+            const min = parseInt(range[0], 10);
+            const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
+            return isInRange(priceValue, min, max);
+        });
+    }
+    
+    return fuelMatch && kmMatch && priceMatch;
+}
+
+/**
+ * 예산 필터 검사
+ */
+function checkBudgetFilter(row, budgetRange) {
+    if (!budgetRange) return true;
+    
+    const { min: budgetMin, max: budgetMax } = budgetRange;
+    const priceValue = safeParseInt(row.price);
+    
+    return isInRange(priceValue, budgetMin, budgetMax);
+}
+
+/**
  * 데이터를 필터링합니다.
  */
 export function filterData(data, activeFilters, searchQuery, budgetRange, yearRange) {
     return data.filter(row => {
-        // 연식 필터 (activeFilters의 year 배열)
-        if (Array.isArray(activeFilters.year) && activeFilters.year.length === 2) {
-            const year = parseInt(row.year, 10);
-            const [minYear, maxYear] = activeFilters.year;
-            if (isNaN(year) || year < minYear || year > maxYear) return false;
-        }
-        
-        // 연식 범위 슬라이더 필터 (yearRange)
-        if (yearRange && Array.isArray(yearRange) && yearRange.length === 2) {
-            const year = parseInt(row.year, 10);
-            const [minYear, maxYear] = yearRange;
-            if (isNaN(year) || year < minYear || year > maxYear) return false;
-        }
-        
-        // 경매장 필터
-        const auctionArr = activeFilters.auction_name || [];
-        const auctionMatch = auctionArr.length === 0
-            ? true
-            : auctionArr.includes(row.auction_name);
-
-        // 지역 필터
-        const regionArr = activeFilters.region || [];
-        const regionMatch = regionArr.length === 0
-            ? true
-            : regionArr.includes(row.region);
-        
-        // 제조사(차종) 필터
-        const titleArr = activeFilters.title || [];
-        const brandMatch = titleArr.length === 0
-            || (row.title && titleArr.some(val => row.title.includes(`[${val}]`)));
-            
-        // 모델 필터
-        const modelArr = activeFilters.model || [];
-        const modelMatch = modelArr.length === 0
-            || (row.title && modelArr.some(val => row.title.includes(val)));
-            
-        // 세부 트림 필터
-        const submodelArr = activeFilters.submodel || [];
-        const submodelMatch = submodelArr.length === 0
-            || (row.title && submodelArr.some(val => {
-                const cleanTrimName = val.replace(/\s*\([^)]*\)\s*/g, '').trim();
-                return row.title.includes(cleanTrimName);
-            }));
-            
-        // 자유 검색어 필터
-        const query = (searchQuery || '').toLowerCase();
-        const searchMatch = query === ''
-            || (
-                (row.title && String(row.title).toLowerCase().includes(query))
-                || (row.subtitle && String(row.subtitle).toLowerCase().includes(query))
-                || (row.region && String(row.region).toLowerCase().includes(query))
-                || (row.auction_name && String(row.auction_name).toLowerCase().includes(query))
-                || (row.car_number && String(row.car_number).toLowerCase().includes(query))
-            );
-            
-        // 연료 필터
-        const fuelArr = activeFilters.fuel || [];
-        const fuelMatch = fuelArr.length === 0 || fuelArr.includes(row.fuel);
-        
-        // 주행거리 필터
-        let kmArr = activeFilters.km || [];
-        let kmMatch = true;
-        if (kmArr.length > 0) {
-            const kmValue = parseInt(row.km, 10);
-            kmMatch = kmArr.some(rangeKey => {
-                const range = mileageRanges[rangeKey].split('-');
-                const min = parseInt(range[0], 10);
-                const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
-                return !isNaN(kmValue) && kmValue >= min && kmValue < max;
-            });
-        }
-        
-        // 가격 필터
-        let priceArr = activeFilters.price || [];
-        let priceMatch = true;
-        if (priceArr.length > 0) {
-            const priceValue = parseInt(row.price, 10);
-            priceMatch = priceArr.some(rangeKey => {
-                const range = priceRanges[rangeKey].split('-');
-                const min = parseInt(range[0], 10);
-                const max = range[1] === 'Infinity' ? Infinity : parseInt(range[1], 10);
-                return !isNaN(priceValue) && (max === Infinity ? priceValue >= min : (priceValue >= min && priceValue < max));
-            });
-        }
-        
-        // 예산 필터링
-        if (budgetRange) {
-            const budgetMin = budgetRange.min;
-            const budgetMax = budgetRange.max;
-            const priceValue = parseInt(row.price, 10);
-            if (isNaN(priceValue) || priceValue < budgetMin || (budgetMax !== Infinity && priceValue > budgetMax)) {
-                return false;
-            }
-        }
-        
-        return (
-            brandMatch &&
-            modelMatch &&
-            submodelMatch &&
-            auctionMatch &&
-            regionMatch &&
-            searchMatch &&
-            fuelMatch &&
-            kmMatch &&
-            priceMatch
-        );
+        return checkYearFilter(row, activeFilters, yearRange) &&
+               checkLocationFilters(row, activeFilters) &&
+               checkVehicleFilters(row, activeFilters) &&
+               checkSearchFilter(row, searchQuery) &&
+               checkSpecFilters(row, activeFilters) &&
+               checkBudgetFilter(row, budgetRange);
     });
+}
+
+/**
+ * 가격 기준 오름차순 정렬
+ */
+function sortByPriceAsc(list) {
+    return [...list].sort((a, b) => {
+        const ap = safeParseInt(a.price);
+        const bp = safeParseInt(b.price);
+        return ap - bp;
+    });
+}
+
+/**
+ * 연식 기준 내림차순 정렬
+ */
+function sortByYearDesc(list) {
+    return [...list].sort((a, b) => {
+        const ay = safeParseInt(a.year);
+        const by = safeParseInt(b.year);
+        return by - ay;
+    });
+}
+
+/**
+ * 주행거리 기준 오름차순 정렬
+ */
+function sortByKmAsc(list) {
+    return [...list].sort((a, b) => safeParseInt(a.km) - safeParseInt(b.km));
 }
 
 /**
@@ -303,24 +393,7 @@ export function sortFilteredData(filteredData, activeFilters, budgetRange, yearR
     const yearActive = (Array.isArray(activeFilters.year) && activeFilters.year.length === 2)
         || (Array.isArray(yearRange) && yearRange.length === 2);
     
-    const sortByPriceAsc = (list) =>
-        [...list].sort((a, b) => {
-            const ap = parseInt(a.price, 10);
-            const bp = parseInt(b.price, 10);
-            const aVal = isNaN(ap) ? Infinity : ap;
-            const bVal = isNaN(bp) ? Infinity : bp;
-            return aVal - bVal;
-        });
-    
-    const sortByYearDesc = (list) =>
-        [...list].sort((a, b) => {
-            const ay = parseInt(a.year, 10);
-            const by = parseInt(b.year, 10);
-            const aVal = isNaN(ay) ? 0 : ay;
-            const bVal = isNaN(by) ? 0 : by;
-            return bVal - aVal;
-        });
-    
+    // 예산과 연식이 모두 활성화된 경우
     if (budgetActive && yearActive) {
         if (lastSortedFilter === 'budget') {
             return sortByPriceAsc(filteredData);
@@ -331,6 +404,7 @@ export function sortFilteredData(filteredData, activeFilters, budgetRange, yearR
         return sortByPriceAsc(filteredData);
     }
     
+    // 개별 필터 우선순위
     if (budgetActive) {
         return sortByPriceAsc(filteredData);
     }
@@ -339,19 +413,17 @@ export function sortFilteredData(filteredData, activeFilters, budgetRange, yearR
         return sortByYearDesc(filteredData);
     }
     
-    // 기존 테이블 헤더 정렬 로직 유지 (price/km 기반)
+    // 기존 테이블 헤더 정렬 로직 유지
     if (priceArr.length > 0 && kmArr.length > 0 && lastSortedFilter) {
-        const sorted = [...filteredData];
         if (lastSortedFilter === 'price') {
-            sorted.sort((a, b) => (parseInt(a.price, 10) || 0) - (parseInt(b.price, 10) || 0));
+            return sortByPriceAsc(filteredData);
         } else if (lastSortedFilter === 'km') {
-            sorted.sort((a, b) => (parseInt(a.km, 10) || 0) - (parseInt(b.km, 10) || 0));
+            return sortByKmAsc(filteredData);
         }
-        return sorted;
     } else if (priceArr.length > 0) {
-        return [...filteredData].sort((a, b) => (parseInt(a.price, 10) || 0) - (parseInt(b.price, 10) || 0));
+        return sortByPriceAsc(filteredData);
     } else if (kmArr.length > 0) {
-        return [...filteredData].sort((a, b) => (parseInt(a.km, 10) || 0) - (parseInt(b.km, 10) || 0));
+        return sortByKmAsc(filteredData);
     }
     
     return filteredData;
