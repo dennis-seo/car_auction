@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import Papa from 'papaparse';
 import DateSelector from './components/DateSelector.jsx';
 import MainSearch from './components/MainSearch.jsx';
 import ActiveFilters from './components/ActiveFilters.jsx';
@@ -66,44 +65,44 @@ function App() {
         setMessage(`'${date}'의 경매 데이터를 불러오는 중입니다...`);
         
         try {
-            // 서버에서 CSV를 직접 파싱 (임시 복구)
+            // JSON API에서 데이터 가져오기
             const apiUrl = API_ENDPOINTS.auctionsByDate(date);
-            Papa.parse(apiUrl, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    if (results.data && results.data.length > 0) {
-                        const newData = results.data;
-                        setData(newData);
-                        appState.allData = newData;
-                        initializeFiltersAndOptions();
-                        setActiveFilters({
-                            title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
-                        });
-                        setSearchQuery('');
-                        setBudgetRange(null);
-                        setYearRange(null);
-                        setMessage('');
-                        setShowMainSearch(true);
+            const response = await fetch(apiUrl, { cache: 'no-cache' });
+            
+            if (!response.ok) {
+                throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
+            }
+            
+            const jsonData = await response.json();
+            
+            // JSON 응답에서 items 배열 추출
+            if (jsonData && jsonData.items && Array.isArray(jsonData.items) && jsonData.items.length > 0) {
+                const newData = jsonData.items;
+                setData(newData);
+                appState.allData = newData;
+                initializeFiltersAndOptions();
+                setActiveFilters({
+                    title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
+                });
+                setSearchQuery('');
+                setBudgetRange(null);
+                setYearRange(null);
+                setMessage('');
+                setShowMainSearch(true);
 
-                        // AuctionManager 상태 로그 출력
-                        console.log(`[App] 데이터 로드 완료 - 총 ${newData.length}개 차량`);
-                        console.log('[App] 경매장별 정보:', auctionManager.getVehicleCountsByAuction());
-                        console.log('[App] 필터 모드:', auctionManager.getFilterMode());
-                    } else {
-                        setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
-                        console.warn('CSV 데이터가 비어있습니다:', results);
-                    }
-                },
-                error: function(error) {
-                    console.error('CSV 파싱 오류:', error);
-                    setMessage(`오류: '${date}' 날짜의 데이터를 읽을 수 없습니다. 잠시 후 다시 시도해주세요.`);
-                }
-            });
+                // AuctionManager 상태 로그 출력
+                console.log(`[App] 데이터 로드 완료 - 총 ${newData.length}개 차량 (${jsonData.date || date})`);
+                console.log(`[App] 소스 파일: ${jsonData.source_filename || '알 수 없음'}`);
+                console.log(`[App] 총 행 수: ${jsonData.row_count || newData.length}`);
+                console.log('[App] 경매장별 정보:', auctionManager.getVehicleCountsByAuction());
+                console.log('[App] 필터 모드:', auctionManager.getFilterMode());
+            } else {
+                setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
+                console.warn('JSON 응답에 데이터가 없습니다:', jsonData);
+            }
         } catch (error) {
             console.error('데이터 로드 오류:', error);
-            setMessage('데이터를 불러오는 중 오류가 발생했습니다.');
+            setMessage(`오류: '${date}' 날짜의 데이터를 읽을 수 없습니다. 잠시 후 다시 시도해주세요.`);
         }
     }, []);
 
