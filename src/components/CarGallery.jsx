@@ -50,10 +50,6 @@ const CarGallery = ({
 
     return (
         <div id="car-gallery" className="car-gallery-container">
-            <div className="car-gallery-header">
-                <h3>검색 결과 ({filteredData.length.toLocaleString()}대)</h3>
-            </div>
-            
             <div className="car-gallery-grid">
                 {filteredData.map((row, index) => (
                     <CardComponent

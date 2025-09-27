@@ -1,84 +1,57 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { getAuctionLogo } from '../utils/getAuctionLogo';
+import auctionManager from '../utils/auctionManager';
 
 /**
  * 경매장 로고 표시 컴포넌트
+ * AuctionManager에서 관리되는 경매장 정보를 기반으로 로고를 표시합니다.
  */
 const AuctionLogo = ({ data }) => {
-    // 경매장별 차량 개수 계산
-    const auctionStats = useMemo(() => {
-        if (!data || data.length === 0) return {};
-        
-        const stats = {};
-        data.forEach(item => {
-            const auctionName = item.auction_name || '기타';
-            stats[auctionName] = (stats[auctionName] || 0) + 1;
-        });
-        
-        // 개수 내림차순 정렬
-        return Object.entries(stats)
-            .sort(([, a], [, b]) => b - a)
-            .reduce((acc, [name, count]) => {
-                acc[name] = count;
-                return acc;
-            }, {});
-    }, [data]);
-
-    // 데이터가 없으면 렌더링하지 않음
-    if (!data || data.length === 0) {
-        return null;
+    // AuctionManager가 초기화되지 않은 경우 빈 컨테이너 반환
+    if (!auctionManager.isReady()) {
+        return <div id="auction-logo-container" aria-hidden="true"></div>;
     }
 
-    const auctionNames = Object.keys(auctionStats);
+    // 로고가 있는 경매장만 가져오기
+    const displayAuctionNames = auctionManager.getAuctionNamesWithLogo();
     
-    // 경매장이 없으면 렌더링하지 않음
-    if (auctionNames.length === 0) {
-        return null;
+    // 디버깅을 위해 경매장 정보를 콘솔에 출력
+    console.log('[AuctionLogo] 로고 표시 가능한 경매장:', displayAuctionNames);
+    console.log('[AuctionLogo] 경매장별 차량 개수:', auctionManager.getVehicleCountsByAuction());
+
+    if (displayAuctionNames.length === 0) {
+        return <div id="auction-logo-container" aria-hidden="true"></div>;
     }
 
     return (
-        <div className="auction-logo-container">
-            <div className="auction-logos">
-                {auctionNames.map(auctionName => {
-                    const logoUrl = getAuctionLogo(auctionName);
-                    const count = auctionStats[auctionName];
-                    
-                    return (
-                        <div key={auctionName} className="auction-logo-item">
-                            <div className="auction-logo-wrapper">
-                                <img
-                                    src={logoUrl}
-                                    alt={`${auctionName} 로고`}
-                                    className="auction-logo"
-                                    onError={(e) => {
-                                        e.target.alt = `${auctionName} (로고 없음)`;
-                                        e.target.style.display = 'none';
-                                        e.target.nextSibling.style.display = 'block';
-                                    }}
-                                />
-                                <div className="auction-logo-fallback" style={{ display: 'none' }}>
-                                    {auctionName}
-                                </div>
-                            </div>
-                            <div className="auction-info">
-                                <span className="auction-name">{auctionName}</span>
-                                <span className="auction-count">
-                                    {count.toLocaleString('ko-KR')}대
-                                </span>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-            
-            <div className="auction-summary">
-                <span className="total-count">
-                    총 {data.length.toLocaleString('ko-KR')}대
-                </span>
-                <span className="auction-count-text">
-                    {auctionNames.length}개 경매장
-                </span>
-            </div>
+        <div id="auction-logo-container" aria-hidden="true">
+            {displayAuctionNames.map(name => {
+                const logoPath = getAuctionLogo(name);
+                const auctionInfo = auctionManager.getAuctionInfo(name);
+                
+                console.log(`[AuctionLogo] ${name}: 로고경로=${logoPath}, 차량수=${auctionInfo?.count}`);
+                
+                return (
+                    <img
+                        key={name}
+                        src={logoPath}
+                        alt={`${name} 로고`}
+                        title={`${name} (${auctionInfo?.count || 0}대)`}
+                        onError={(e) => {
+                            console.error(`[AuctionLogo] 로고 로드 실패 - ${name}: ${logoPath}`);
+                            e.target.style.display = 'none';
+                        }}
+                        onLoad={() => {
+                            console.log(`[AuctionLogo] 로고 로드 성공 - ${name}: ${logoPath}`);
+                        }}
+                        style={{ 
+                            maxWidth: '120px', 
+                            maxHeight: '100px',
+                            objectFit: 'contain'
+                        }}
+                    />
+                );
+            })}
         </div>
     );
 };
