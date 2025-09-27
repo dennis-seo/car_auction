@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { filterData, sortFilteredData } from '../utils/dataUtils';
 import { columnMapping, mileageRanges, priceRanges, appState } from '../utils/appState';
-import TableHeaderFilter from './TableHeaderFilter';
+import TableHeaderFilter from './TableHeaderFilter.jsx';
 
 /**
  * 차량 테이블 컴포넌트

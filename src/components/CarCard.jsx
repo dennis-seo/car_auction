@@ -101,7 +101,10 @@ const CarCard = ({ row, onImageClick, onDetailsClick }) => {
         {hasBadges && (
           <div className="car-list-card-badges">
             {sellNumber && (
-              <div className="badge badge-sell" onClick={() => onDetailsClick && onDetailsClick(row)}>
+              <div 
+                className="badge badge-sell" 
+                onClick={() => onDetailsClick && onDetailsClick(row)}
+              >
                 {CONSTANTS.SELL_NUMBER_PREFIX} {sellNumber}
               </div>
             )}

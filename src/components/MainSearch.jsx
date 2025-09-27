@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import BrandSelector from './BrandSelector';
-import ModelSelector from './ModelSelector';
-import SubmodelSelector from './SubmodelSelector';
-import BudgetSlider from './BudgetSlider';
-import YearSlider from './YearSlider';
-import DynamicFilter from './FuelFilter';
+import BrandSelector from './BrandSelector.jsx';
+import ModelSelector from './ModelSelector.jsx';
+import SubmodelSelector from './SubmodelSelector.jsx';
+import BudgetSlider from './BudgetSlider.jsx';
+import YearSlider from './YearSlider.jsx';
+import DynamicFilter from './FuelFilter.jsx';
 
 /**
  * 메인 검색 영역 컴포넌트

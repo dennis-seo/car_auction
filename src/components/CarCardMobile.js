@@ -1,5 +1,5 @@
 import React from 'react';
-import CarCard from './CarCard';
+import CarCard from './CarCard.jsx';
 
 /**
  * 모바일용 차량 카드 컴포넌트

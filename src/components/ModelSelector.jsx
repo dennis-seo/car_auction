@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { loadSearchTree, findBrandByLabel } from '../utils/dataUtils';
+import { loadSearchTree } from '../utils/dataUtils';
 
 /**
  * 모델 선택 컴포넌트
@@ -12,7 +12,6 @@ const ModelSelector = ({ activeFilters, onUpdateFilter }) => {
 
     const currentBrand = (activeFilters.title || [])[0] || null;
     const currentModel = (activeFilters.model || [])[0] || null;
-    const isDisabled = !currentBrand;
 
     useEffect(() => {
         // 검색 트리 데이터 로드
@@ -42,15 +41,16 @@ const ModelSelector = ({ activeFilters, onUpdateFilter }) => {
 
     const handleToggle = (e) => {
         e.stopPropagation();
-        if (!isDisabled) {
-            setIsOpen(!isOpen);
-        }
+        if (!currentBrand) return; // 브랜드가 선택되지 않으면 열 수 없음
+        setIsOpen(!isOpen);
     };
 
     const handleKeyDown = (e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) {
+        if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setIsOpen(!isOpen);
+            if (currentBrand) {
+                setIsOpen(!isOpen);
+            }
         }
     };
 
@@ -61,63 +61,60 @@ const ModelSelector = ({ activeFilters, onUpdateFilter }) => {
         setIsOpen(false);
     };
 
-    const getModelsForBrand = () => {
+    const getAvailableModels = () => {
         if (!searchTree || !currentBrand) return [];
         
-        const brandInfo = findBrandByLabel(currentBrand);
-        return brandInfo?.models || [];
+        // 국산과 수입 브랜드 모두에서 검색
+        const allBrands = [
+            ...(searchTree.domestic || []),
+            ...(searchTree.import || [])
+        ];
+        
+        const brand = allBrands.find(b => b.label === currentBrand);
+        return brand?.models || [];
     };
 
     const renderModelOptions = () => {
-        if (!currentBrand) {
+        const models = getAvailableModels();
+        
+        if (models.length === 0) {
             return (
                 <div style={{ padding: '14px 16px', color: '#8a94a6' }}>
-                    먼저 제조사를 선택하세요.
+                    {currentBrand ? '사용 가능한 모델이 없습니다.' : '브랜드를 먼저 선택해주세요.'}
                 </div>
             );
         }
 
-        const models = getModelsForBrand();
-        if (!models || models.length === 0) {
-            return (
-                <div style={{ padding: '14px 16px', color: '#8a94a6' }}>
-                    모델 정보가 없습니다.
-                </div>
-            );
-        }
-
-        return models.map(model => {
-            const modelName = model.label || model.model;
-            return (
-                <div
-                    key={modelName}
-                    className={`select-option${currentModel === modelName ? ' selected' : ''}`}
-                    role="option"
-                    aria-selected={currentModel === modelName}
-                    onClick={() => handleModelSelect(modelName)}
-                >
-                    {modelName}
-                </div>
-            );
-        });
+        return models.map(model => (
+            <div
+                key={model.label}
+                className={`select-option${currentModel === model.label ? ' selected' : ''}`}
+                role="option"
+                aria-selected={currentModel === model.label}
+                onClick={() => handleModelSelect(model.label)}
+            >
+                {model.label}
+            </div>
+        ));
     };
 
     return (
         <div
             ref={boxRef}
-            className={`car-select-box${isDisabled ? ' disabled' : ''}`}
+            className={`car-select-box${!currentBrand ? ' disabled' : ''}`}
             id="model-select"
             role="button"
             tabIndex="0"
             aria-haspopup="listbox"
             aria-expanded={isOpen}
+            aria-disabled={!currentBrand}
             onClick={handleToggle}
             onKeyDown={handleKeyDown}
         >
-            <div className={`car-select-label${isDisabled ? ' disabled' : ''}`}>
+            <div className="car-select-label">
                 {currentModel || '모델'}
             </div>
-            {isOpen && !isDisabled && (
+            {isOpen && currentBrand && (
                 <div className="select-dropdown" ref={dropdownRef}>
                     <div className="select-dropdown-inner">
                         <div className="select-list" role="listbox" aria-label="모델 선택">

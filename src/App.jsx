@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import Papa from 'papaparse';
-import DateSelector from './components/DateSelector';
-import MainSearch from './components/MainSearch';
-import ActiveFilters from './components/ActiveFilters';
-import CarGallery from './components/CarGallery';
-import CarTable from './components/CarTable';
-import ImageModal from './components/ImageModal';
-import DetailsModal from './components/DetailsModal';
-import AuctionLogo from './components/AuctionLogo';
-import DateLoadError from './components/DateLoadError';
+import DateSelector from './components/DateSelector.jsx';
+import MainSearch from './components/MainSearch.jsx';
+import ActiveFilters from './components/ActiveFilters.jsx';
+import CarGallery from './components/CarGallery.jsx';
+import CarTable from './components/CarTable.jsx';
+import ImageModal from './components/ImageModal.jsx';
+import DetailsModal from './components/DetailsModal.jsx';
+import AuctionLogo from './components/AuctionLogo.jsx';
+import DateLoadError from './components/DateLoadError.jsx';
 import { initializeFiltersAndOptions, fetchAvailableDates } from './utils/dataUtils';
 import { appState } from './utils/appState';
 import { API_ENDPOINTS } from './utils/apiConfig';
@@ -176,12 +176,15 @@ function App() {
                 <DateLoadError onRetry={initializeDates} />
             ) : (
                 message && (
-                    <p id="message" style={{ 
-                        textAlign: 'center', 
-                        color: '#6c757d', 
-                        padding: '2rem',
-                        display: message ? 'block' : 'none'
-                    }}>
+                    <p 
+                        id="message" 
+                        style={{ 
+                            textAlign: 'center', 
+                            color: '#6c757d', 
+                            padding: '2rem',
+                            display: message ? 'block' : 'none'
+                        }}
+                    >
                         {message}
                     </p>
                 )

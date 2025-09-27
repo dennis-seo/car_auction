@@ -1,5 +1,5 @@
 import React from 'react';
-import CarCard from './CarCard';
+import CarCard from './CarCard.jsx';
 
 /**
  * 데스크톱용 차량 카드 컴포넌트 (성능 최적화)
