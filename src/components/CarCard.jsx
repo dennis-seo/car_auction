@@ -86,14 +86,29 @@ const CarCard = ({ row, onImageClick, onDetailsClick }) => {
     fallbackImage 
   } = cardData;
 
+  // 카드 클릭 핸들러 (이미지 영역 제외)
+  const handleCardClick = useCallback((e) => {
+    // 이미지 클릭은 별도 처리 (이미지 확대)
+    if (e.target.tagName === 'IMG') return;
+    onDetailsClick && onDetailsClick(row);
+  }, [onDetailsClick, row]);
+
   return (
-    <div className="car-list-item-card">
+    <div
+      className="car-list-item-card"
+      onClick={handleCardClick}
+      style={{ cursor: 'pointer' }}
+    >
       <img
         className="car-list-card-image"
         src={imgUrl}
+        loading="lazy"
         onError={(e) => handleImageError(e, fallbackImage)}
         onLoad={(e) => handleImageLoad(e, imgUrl)}
-        onClick={() => imgUrl && onImageClick && onImageClick(imgUrl)}
+        onClick={(e) => {
+          e.stopPropagation();
+          imgUrl && onImageClick && onImageClick(imgUrl);
+        }}
         style={{ cursor: imgUrl ? 'pointer' : 'default' }}
         alt={CONSTANTS.ALT_TEXT}
       />
@@ -101,10 +116,7 @@ const CarCard = ({ row, onImageClick, onDetailsClick }) => {
         {hasBadges && (
           <div className="car-list-card-badges">
             {sellNumber && (
-              <div 
-                className="badge badge-sell" 
-                onClick={() => onDetailsClick && onDetailsClick(row)}
-              >
+              <div className="badge badge-sell">
                 {CONSTANTS.SELL_NUMBER_PREFIX} {sellNumber}
               </div>
             )}

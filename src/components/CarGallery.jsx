@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
-import { filterData, sortFilteredData } from '../utils/dataUtils';
-import { appState } from '../utils/appState';
+import React from 'react';
+import PropTypes from 'prop-types';
+import { useFilteredData } from '../hooks/useFilteredData';
+import { useIsMobile } from '../hooks/useIsMobile';
 import CarCardMobile from './CarCardMobile.jsx';
 import CarCardDesktop from './CarCardDesktop.jsx';
 
@@ -8,45 +9,29 @@ import CarCardDesktop from './CarCardDesktop.jsx';
  * 차량 갤러리 컴포넌트
  * 모바일/데스크톱에 따라 다른 카드 컴포넌트를 렌더링
  */
-const CarGallery = ({ 
-    data, 
-    activeFilters, 
-    searchQuery, 
-    budgetRange, 
-    yearRange, 
-    onImageClick, 
-    onDetailsClick 
+const CarGallery = ({
+    data,
+    activeFilters,
+    searchQuery,
+    budgetRange,
+    yearRange,
+    lastSortedFilter,
+    onImageClick,
+    onDetailsClick
 }) => {
-    // 필터링된 데이터 계산
-    const filteredData = useMemo(() => {
-        console.log('[CarGallery] 데이터 필터링 시작:', {
-            originalDataLength: data?.length || 0,
-            activeFilters,
-            searchQuery,
-            budgetRange,
-            yearRange
-        });
-        
-        if (!data || data.length === 0) {
-            console.log('[CarGallery] 원본 데이터가 없음');
-            return [];
-        }
-        
-        const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
-        const sorted = sortFilteredData(filtered, activeFilters, budgetRange, yearRange, appState.lastSortedFilter);
-        
-        console.log('[CarGallery] 데이터 필터링 완료:', {
-            originalLength: data.length,
-            filteredLength: filtered.length,
-            finalLength: sorted.length,
-            sampleData: data[0]
-        });
-        
-        return sorted;
-    }, [data, activeFilters, searchQuery, budgetRange, yearRange]);
+    // 커스텀 훅 사용
+    const isMobile = useIsMobile(768);
+    const filteredData = useFilteredData(
+        data,
+        activeFilters,
+        searchQuery,
+        budgetRange,
+        yearRange,
+        lastSortedFilter
+    );
 
     // 렌더링할 카드 컴포넌트 결정
-    const CardComponent = window.innerWidth <= 768 ? CarCardMobile : CarCardDesktop;
+    const CardComponent = isMobile ? CarCardMobile : CarCardDesktop;
 
     if (!data || data.length === 0) {
         return (
@@ -82,6 +67,17 @@ const CarGallery = ({
             </div>
         </div>
     );
+};
+
+CarGallery.propTypes = {
+    data: PropTypes.array.isRequired,
+    activeFilters: PropTypes.object.isRequired,
+    searchQuery: PropTypes.string,
+    budgetRange: PropTypes.object,
+    yearRange: PropTypes.array,
+    lastSortedFilter: PropTypes.string,
+    onImageClick: PropTypes.func.isRequired,
+    onDetailsClick: PropTypes.func.isRequired
 };
 
 export default CarGallery;

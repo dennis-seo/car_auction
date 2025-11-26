@@ -28,6 +28,21 @@ export const priceRanges = {
     "3,000만원 이상": "3000-Infinity"
 };
 
+// 사전 파싱된 범위 객체 (성능 최적화)
+export const parsedMileageRanges = Object.fromEntries(
+    Object.entries(mileageRanges).map(([key, val]) => {
+        const [min, max] = val.split('-');
+        return [key, { min: parseInt(min, 10), max: max === 'Infinity' ? Infinity : parseInt(max, 10) }];
+    })
+);
+
+export const parsedPriceRanges = Object.fromEntries(
+    Object.entries(priceRanges).map(([key, val]) => {
+        const [min, max] = val.split('-');
+        return [key, { min: parseInt(min, 10), max: max === 'Infinity' ? Infinity : parseInt(max, 10) }];
+    })
+);
+
 // 앱 상태 - React용으로 수정
 export const appState = {
     allData: [],

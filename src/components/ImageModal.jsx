@@ -1,27 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
 /**
  * 이미지 모달 컴포넌트
+ * ESC 키 처리 및 body 스크롤 제어는 useModal 훅에서 처리
  */
 const ImageModal = ({ show, imageUrl, onClose }) => {
-    useEffect(() => {
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        if (show) {
-            document.addEventListener('keydown', handleEscape);
-            // 스크롤 방지
-            document.body.style.overflow = 'hidden';
-        }
-
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = 'unset';
-        };
-    }, [show, onClose]);
 
     const handleOverlayClick = (e) => {
         if (e.target === e.currentTarget) {

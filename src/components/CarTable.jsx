@@ -1,49 +1,51 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { filterData, sortFilteredData } from '../utils/dataUtils';
-import { columnMapping, mileageRanges, priceRanges, appState } from '../utils/appState';
+import React, { useMemo } from 'react';
+import { useFilteredData } from '../hooks/useFilteredData';
+import { columnMapping, mileageRanges, priceRanges } from '../utils/appState';
 import TableHeaderFilter from './TableHeaderFilter.jsx';
 
 /**
  * 차량 테이블 컴포넌트
  */
-const CarTable = ({ 
-    data, 
-    activeFilters, 
-    searchQuery, 
-    budgetRange, 
+const CarTable = ({
+    data,
+    activeFilters,
+    searchQuery,
+    budgetRange,
     yearRange,
-    onImageClick, 
-    onDetailsClick, 
+    lastSortedFilter,
+    onImageClick,
+    onDetailsClick,
     onUpdateFilter,
-    showTable 
+    showTable
 }) => {
-    const [tableFilters, setTableFilters] = useState({});
+    // useFilteredData 훅 사용
+    const filteredData = useFilteredData(
+        data,
+        activeFilters,
+        searchQuery,
+        budgetRange,
+        yearRange,
+        lastSortedFilter
+    );
 
-    const filteredData = useMemo(() => {
-        if (!data || data.length === 0) return [];
-        
-        const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
-        return sortFilteredData(filtered, activeFilters, budgetRange, yearRange, appState.lastSortedFilter);
-    }, [data, activeFilters, searchQuery, budgetRange, yearRange]);
+    // 테이블 필터 옵션을 useMemo로 최적화
+    const tableFilters = useMemo(() => {
+        if (!data || data.length === 0) return {};
 
-    useEffect(() => {
-        // 데이터가 변경되면 테이블 필터 옵션 업데이트
-        if (data && data.length > 0) {
-            setTableFilters({
-                fuel: [...new Set(data.map(row => row.fuel).filter(Boolean))].sort(),
-                vehicleType: [...new Set(data.map(row => 
-                    row.vehicleType || row.usage || row.type || row.purpose || row.fuel
-                ).filter(Boolean))].sort(),
-                title: [...new Set(data.map(row => {
-                    const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
-                    return match ? match[1] : null;
-                }).filter(Boolean))].sort(),
-                auction_name: [...new Set(data.map(row => row.auction_name).filter(Boolean))].sort(),
-                region: [...new Set(data.map(row => row.region).filter(Boolean))].sort(),
-                km: Object.keys(mileageRanges),
-                price: Object.keys(priceRanges)
-            });
-        }
+        return {
+            fuel: [...new Set(data.map(row => row.fuel).filter(Boolean))].sort(),
+            vehicleType: [...new Set(data.map(row =>
+                row.vehicleType || row.usage || row.type || row.purpose || row.fuel
+            ).filter(Boolean))].sort(),
+            title: [...new Set(data.map(row => {
+                const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
+                return match ? match[1] : null;
+            }).filter(Boolean))].sort(),
+            auction_name: [...new Set(data.map(row => row.auction_name).filter(Boolean))].sort(),
+            region: [...new Set(data.map(row => row.region).filter(Boolean))].sort(),
+            km: Object.keys(mileageRanges),
+            price: Object.keys(priceRanges)
+        };
     }, [data]);
 
     const handleCellClick = (e, row, columnKey) => {

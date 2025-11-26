@@ -32,9 +32,11 @@ body {
     padding: 2rem;
     border-radius: 12px;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-    width: 100%; /* 부모 컨테이너를 뷰포트 폭에 반응하도록 확장 */
-    max-width: 100%;
-    box-sizing: border-box; /* 패딩 포함 너비 계산으로 overflow 방지 */
+    width: 100%;
+    max-width: 1200px; /* 최대 너비 고정으로 레이아웃 안정화 */
+    min-width: 0; /* flex 컨테이너에서 축소 방지 */
+    flex-shrink: 0; /* flex 아이템 축소 방지 */
+    box-sizing: border-box;
 }
 
 /* 제목 스타일 */
@@ -224,8 +226,8 @@ h1 {
 
 /* 상세 모달 스타일 */
 .details-modal-content {
-    width: 90vw;
-    max-width: 600px;
+    width: 90vw !important;
+    max-width: 480px !important;
 }
 
 .details-grid {
@@ -524,13 +526,10 @@ tbody tr:hover {
     padding: 25px;
     border-radius: 12px;
     width: 90%;
-    max-width: 600px;
+    max-width: 480px;
     position: relative;
     animation: zoomIn 0.3s ease;
     box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-}
-.details-modal-content {
-    width: 100%;
 }
 .details-modal-header {
     margin-bottom: 20px;

@@ -41,17 +41,12 @@ const MainSearch = ({
     const handleInputChange = useCallback((e) => {
         const value = e.target.value;
         setInputValue(value);
-        
+
         // 입력이 비워지면 즉시 검색 쿼리 해제
         if (value.trim() === '' && searchQuery !== '') {
             onSearchQueryChange('');
         }
     }, [searchQuery, onSearchQueryChange]);
-
-    const handleFilterSearch = useCallback(() => {
-        // 현재 선택된 필터들로 검색 실행 (이미 activeFilters가 업데이트되어 있으므로 별도 처리 불필요)
-        console.log('필터 검색 실행');
-    }, []);
 
     return (
         <div className="main-search-container">
@@ -78,27 +73,18 @@ const MainSearch = ({
 
             <div className="main-car-filter">
                 <div className="car-select-wrap">
-                    <BrandSelector 
+                    <BrandSelector
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
                     />
-                    <ModelSelector 
+                    <ModelSelector
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
                     />
-                    <SubmodelSelector 
+                    <SubmodelSelector
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
                     />
-                    <span className="btn-base tx-white bg-blue70 big radius fr">
-                        <button 
-                            type="button" 
-                            className="filter-search-btn"
-                            onClick={handleFilterSearch}
-                        >
-                            검색
-                        </button>
-                    </span>
                 </div>
             </div>
             <DynamicFilter 

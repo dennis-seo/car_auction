@@ -1,23 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import './App.css';
 import DateSelector from './components/DateSelector.jsx';
-import MainSearch from './components/MainSearch.jsx';
-import ActiveFilters from './components/ActiveFilters.jsx';
-import CarGallery from './components/CarGallery.jsx';
-import CarTable from './components/CarTable.jsx';
-import ImageModal from './components/ImageModal.jsx';
-import DetailsModal from './components/DetailsModal.jsx';
 import AuctionLogo from './components/AuctionLogo.jsx';
 import DateLoadError from './components/DateLoadError.jsx';
 import { initializeFiltersAndOptions, fetchAvailableDates } from './utils/dataUtils';
 import { appState } from './utils/appState';
 import { API_ENDPOINTS } from './utils/apiConfig';
 import auctionManager from './utils/auctionManager';
+import { useAppContext } from './contexts/AppContext';
+
+// Lazy Loading으로 코드 스플리팅
+const MainSearch = lazy(() => import('./components/MainSearch.jsx'));
+const ActiveFilters = lazy(() => import('./components/ActiveFilters.jsx'));
+const CarGallery = lazy(() => import('./components/CarGallery.jsx'));
+const CarTable = lazy(() => import('./components/CarTable.jsx'));
+const ImageModal = lazy(() => import('./components/ImageModal.jsx'));
+const DetailsModal = lazy(() => import('./components/DetailsModal.jsx'));
+const ErrorBoundaryTest = lazy(() => import('./components/ErrorBoundaryTest.jsx'));
 
 function App() {
+    // Context에서 전역 상태 가져오기
+    const { allData, setAllData, lastSortedFilter, setLastSortedFilter } = useAppContext();
+
     // 앱 상태 관리
     const [selectedDate, setSelectedDate] = useState('');
-    const [data, setData] = useState([]);
     const [availableDates, setAvailableDates] = useState([]);
     const [activeFilters, setActiveFilters] = useState({
         title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
@@ -36,8 +42,8 @@ function App() {
     // 초기화: 사용 가능한 날짜 목록 불러오기
     const initializeDates = useCallback(async () => {
         try {
-            await fetchAvailableDates();
-            setAvailableDates([...appState.availableDates]);
+            const dates = await fetchAvailableDates();
+            setAvailableDates(dates);
             setDateLoadError(false);
             setMessage('날짜를 선택하면 해당일의 경매 목록을 불러옵니다.');
         } catch (error) {
@@ -58,8 +64,8 @@ function App() {
         
         if (!date) {
             console.log('[App] 빈 날짜 선택, 데이터 초기화');
-            setData([]);
-            appState.allData = [];
+            setAllData([]);
+            appState.allData = []; // 하위 호환성 유지
             auctionManager.reset(); // AuctionManager 초기화
             setMessage('날짜를 선택하면 해당일의 경매 목록을 불러옵니다.');
             setShowMainSearch(false);
@@ -106,13 +112,13 @@ function App() {
             if (jsonData && jsonData.items && Array.isArray(jsonData.items) && jsonData.items.length > 0) {
                 const newData = jsonData.items;
                 console.log(`[App] 새 데이터 설정: ${newData.length}개 차량`);
-                
+
                 // 상태 업데이트
-                setData(newData);
-                appState.allData = newData;
-                
+                setAllData(newData);
+                appState.allData = newData; // 하위 호환성 유지
+
                 console.log('[App] 필터 및 옵션 초기화 시작');
-                initializeFiltersAndOptions();
+                initializeFiltersAndOptions(newData);
                 
                 // 모든 필터 초기화
                 setActiveFilters({
@@ -136,21 +142,21 @@ function App() {
                 console.log('[App] 컴포넌트 상태 업데이트 완료');
             } else {
                 console.warn('[App] 데이터 없음 또는 빈 응답:', jsonData);
-                setData([]);
-                appState.allData = [];
+                setAllData([]);
+                appState.allData = []; // 하위 호환성 유지
                 auctionManager.reset(); // 빈 데이터 시 AuctionManager 초기화
                 setMessage(`데이터가 없거나 파일을 찾을 수 없습니다. (날짜: ${date})`);
                 setShowMainSearch(false);
             }
         } catch (error) {
             console.error('[App] 데이터 로드 오류:', error);
-            setData([]);
-            appState.allData = [];
+            setAllData([]);
+            appState.allData = []; // 하위 호환성 유지
             auctionManager.reset(); // 오류 시 AuctionManager 초기화
             setMessage(`오류: '${date}' 날짜의 데이터를 읽을 수 없습니다. 잠시 후 다시 시도해주세요.`);
             setShowMainSearch(false);
         }
-    }, [selectedDate]);
+    }, [selectedDate, setAllData]);
 
     // 필터 업데이트
     const updateFilter = useCallback((filterType, value, action = 'toggle') => {
@@ -174,13 +180,13 @@ function App() {
             if (filterType === 'year') {
                 const arr = newFilters.year;
                 if (Array.isArray(arr) && arr.length === 2) {
-                    appState.lastSortedFilter = 'year';
+                    setLastSortedFilter('year');
                 }
             }
-            
+
             return newFilters;
         });
-    }, []);
+    }, [setLastSortedFilter]);
 
     // 모달 핸들러
     const showImageModalHandler = useCallback((imageUrl) => {
@@ -207,25 +213,25 @@ function App() {
     return (
         <div className="container">
             <h1>차량 경매 정보</h1>
-            <AuctionLogo data={data} />
-            
-            <DateSelector 
+            <AuctionLogo data={allData} />
+
+            <DateSelector
                 availableDates={availableDates}
                 selectedDate={selectedDate}
                 onDateChange={handleDateChange}
                 loading={!availableDates.length && !dateLoadError}
                 disabled={dateLoadError}
             />
-            
+
             {dateLoadError ? (
                 <DateLoadError onRetry={initializeDates} />
             ) : (
                 message && (
-                    <p 
-                        id="message" 
-                        style={{ 
-                            textAlign: 'center', 
-                            color: '#6c757d', 
+                    <p
+                        id="message"
+                        style={{
+                            textAlign: 'center',
+                            color: '#6c757d',
                             padding: '2rem',
                             display: message ? 'block' : 'none'
                         }}
@@ -235,9 +241,10 @@ function App() {
                 )
             )}
 
-            {showMainSearch && (
-                <MainSearch 
-                    data={data}
+            <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>로딩 중...</div>}>
+                {showMainSearch && (
+                    <MainSearch
+                    data={allData}
                     activeFilters={activeFilters}
                     searchQuery={searchQuery}
                     budgetRange={budgetRange}
@@ -247,48 +254,50 @@ function App() {
                     onBudgetRangeChange={(range) => {
                         setBudgetRange(range);
                         if (range) {
-                            appState.lastSortedFilter = 'budget';
+                            setLastSortedFilter('budget');
                         }
                     }}
                     onYearRangeChange={(range) => {
                         setYearRange(range);
                         if (Array.isArray(range) && range.length === 2) {
-                            appState.lastSortedFilter = 'year';
+                            setLastSortedFilter('year');
                         }
                     }}
                 />
             )}
 
-            <ActiveFilters 
+            <ActiveFilters
                 activeFilters={activeFilters}
                 budgetRange={budgetRange}
                 searchQuery={searchQuery}
-                data={data}
+                data={allData}
                 onRemoveFilter={updateFilter}
                 onRemoveBudgetRange={() => setBudgetRange(null)}
                 onRemoveSearchQuery={handleRemoveSearchQuery}
             />
 
-            <CarGallery 
-                data={data}
+            <CarGallery
+                data={allData}
                 activeFilters={activeFilters}
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
                 yearRange={yearRange}
+                lastSortedFilter={lastSortedFilter}
                 onImageClick={showImageModalHandler}
                 onDetailsClick={showDetailsModalHandler}
             />
 
-            <CarTable 
-                data={data}
+            <CarTable
+                data={allData}
                 activeFilters={activeFilters}
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
                 yearRange={yearRange}
+                lastSortedFilter={lastSortedFilter}
                 onImageClick={showImageModalHandler}
                 onDetailsClick={showDetailsModalHandler}
                 onUpdateFilter={updateFilter}
-                showTable={!!selectedDate && data.length > 0}
+                showTable={!!selectedDate && allData.length > 0}
             />
 
             <ImageModal 
@@ -297,11 +306,14 @@ function App() {
                 onClose={hideImageModalHandler}
             />
 
-            <DetailsModal 
-                show={detailsModal.show}
-                data={detailsModal.data}
-                onClose={hideDetailsModalHandler}
-            />
+                <DetailsModal
+                    show={detailsModal.show}
+                    data={detailsModal.data}
+                    onClose={hideDetailsModalHandler}
+                />
+
+                <ErrorBoundaryTest />
+            </Suspense>
         </div>
     );
 }
