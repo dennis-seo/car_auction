@@ -88,9 +88,11 @@ README.md에 명시된 경매장별 평가 등급 기준:
 ## Git 커밋 메시지 규칙
 
 `.firebender/commands/git-push-message-rule.md` 참고:
-- 브랜치명에서 이슈 ID 추출: `(FANQA-\d+|FANAND-\d+)` 패턴
-- 포맷: `[ISSUE_ID] 제목` + 목적(원인) + 수정내역 (개조식)
+- 포맷: `제목` + 목적(원인) + 수정내역 (개조식)
 - 한국어로 작성, 모든 변경사항 포함
+- **중요**: 커밋 메시지에 Claude 관련 attribution 제외 (아래 내용 포함 금지)
+  - `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
+  - `Co-Authored-By: Claude <noreply@anthropic.com>`
 
 ## 환경 변수
 
