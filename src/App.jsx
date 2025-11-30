@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import './App.css';
-import DateSelector from './components/DateSelector.jsx';
-import AuctionLogo from './components/AuctionLogo.jsx';
-import DateLoadError from './components/DateLoadError.jsx';
+import DateSelector from './components/DateSelector';
+import AuctionLogo from './components/AuctionLogo';
+import DateLoadError from './components/DateLoadError';
 import { initializeFiltersAndOptions, fetchAvailableDates } from './utils/dataUtils';
 import { appState } from './utils/appState';
 import { API_ENDPOINTS } from './utils/apiConfig';
@@ -10,13 +10,13 @@ import auctionManager from './utils/auctionManager';
 import { useAppContext } from './contexts/AppContext';
 
 // Lazy Loading으로 코드 스플리팅
-const MainSearch = lazy(() => import('./components/MainSearch.jsx'));
-const ActiveFilters = lazy(() => import('./components/ActiveFilters.jsx'));
-const CarGallery = lazy(() => import('./components/CarGallery.jsx'));
-const CarTable = lazy(() => import('./components/CarTable.jsx'));
-const ImageModal = lazy(() => import('./components/ImageModal.jsx'));
-const DetailsModal = lazy(() => import('./components/DetailsModal.jsx'));
-const ErrorBoundaryTest = lazy(() => import('./components/ErrorBoundaryTest.jsx'));
+const MainSearch = lazy(() => import('./components/MainSearch'));
+const ActiveFilters = lazy(() => import('./components/ActiveFilters'));
+const CarGallery = lazy(() => import('./components/CarGallery'));
+const CarTable = lazy(() => import('./components/CarTable'));
+const ImageModal = lazy(() => import('./components/ImageModal'));
+const DetailsModal = lazy(() => import('./components/DetailsModal'));
+const ErrorBoundaryTest = lazy(() => import('./components/ErrorBoundaryTest'));
 
 function App() {
     // Context에서 전역 상태 가져오기

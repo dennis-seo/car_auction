@@ -2,16 +2,34 @@ import React, { useCallback, useState } from 'react';
 import VehicleHistory from './VehicleHistory';
 import PriceChart from './PriceChart';
 import './DetailsModal.css';
+import type { AuctionItem } from '../types';
+
+/** 탭 타입 */
+type TabType = 'details' | 'history' | 'chart';
+
+/**
+ * DetailsModal 컴포넌트 Props
+ */
+interface DetailsModalProps {
+    /** 모달 표시 여부 */
+    show: boolean;
+    /** 차량 데이터 */
+    data: AuctionItem | null;
+    /** 모달 닫기 콜백 */
+    onClose: () => void;
+    /** 현재 경매 날짜 (YYMMDD 형식) */
+    currentDate: string;
+}
 
 /**
  * 상세 정보 모달 컴포넌트
  * 탭 구조: 상세정보 / 시세 히스토리 / 시세 그래프
  */
-const DetailsModal = ({ show, data, onClose, currentDate }) => {
-    const [activeTab, setActiveTab] = useState('details');
+const DetailsModal: React.FC<DetailsModalProps> = ({ show, data, onClose, currentDate }) => {
+    const [activeTab, setActiveTab] = useState<TabType>('details');
 
     // 모달 외부 클릭 시 닫기
-    const handleBackdropClick = useCallback((e) => {
+    const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget) {
             onClose();
         }
@@ -23,18 +41,18 @@ const DetailsModal = ({ show, data, onClose, currentDate }) => {
         onClose();
     }, [onClose]);
 
-    const formatKm = (km) => {
-        if (!km || isNaN(parseInt(km, 10))) return km;
-        return parseInt(km, 10).toLocaleString('ko-KR');
+    const formatKm = (km: number | string | undefined): string => {
+        if (!km || isNaN(parseInt(String(km), 10))) return String(km || '-');
+        return parseInt(String(km), 10).toLocaleString('ko-KR');
     };
 
-    const formatPrice = (price) => {
-        if (!price || isNaN(parseInt(price, 10))) return price;
-        return parseInt(price, 10).toLocaleString('ko-KR');
+    const formatPrice = (price: number | string | undefined): string => {
+        if (!price || isNaN(parseInt(String(price), 10))) return String(price || '-');
+        return parseInt(String(price), 10).toLocaleString('ko-KR');
     };
 
     // currentDate를 API 형식(YYYY-MM-DD)으로 변환
-    const formatDateForAPI = (dateStr) => {
+    const formatDateForAPI = (dateStr: string): string | null => {
         if (!dateStr || dateStr.length !== 6) return null;
         return `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`;
     };
@@ -75,7 +93,7 @@ const DetailsModal = ({ show, data, onClose, currentDate }) => {
                             alt={`${data.title || '차량'} 이미지`}
                             className="details-modal-image"
                             onError={(e) => {
-                                e.target.style.display = 'none';
+                                (e.target as HTMLImageElement).style.display = 'none';
                             }}
                         />
                     </div>
@@ -172,7 +190,7 @@ const DetailsModal = ({ show, data, onClose, currentDate }) => {
                                     </div>
                                     <div className="details-spec-info">
                                         <span className="details-spec-label">주행거리</span>
-                                        <span className="details-spec-value">{formatKm(data.km) || '-'} km</span>
+                                        <span className="details-spec-value">{formatKm(data.km)} km</span>
                                     </div>
                                 </div>
 

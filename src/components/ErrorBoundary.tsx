@@ -1,11 +1,31 @@
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+
+/**
+ * ErrorBoundary 컴포넌트 Props
+ */
+interface ErrorBoundaryProps {
+    /** 자식 컴포넌트 */
+    children: ReactNode;
+}
+
+/**
+ * ErrorBoundary 컴포넌트 State
+ */
+interface ErrorBoundaryState {
+    /** 에러 발생 여부 */
+    hasError: boolean;
+    /** 발생한 에러 */
+    error: Error | null;
+    /** 에러 정보 (컴포넌트 스택 등) */
+    errorInfo: ErrorInfo | null;
+}
 
 /**
  * 에러 바운더리 컴포넌트
  * 하위 컴포넌트에서 발생한 에러를 잡아서 처리
  */
-class ErrorBoundary extends React.Component {
-    constructor(props) {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+    constructor(props: ErrorBoundaryProps) {
         super(props);
         this.state = {
             hasError: false,
@@ -14,11 +34,11 @@ class ErrorBoundary extends React.Component {
         };
     }
 
-    static getDerivedStateFromError(error) {
+    static getDerivedStateFromError(_error: Error): Partial<ErrorBoundaryState> {
         return { hasError: true };
     }
 
-    componentDidCatch(error, errorInfo) {
+    componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
         this.setState({
             error,
@@ -26,7 +46,7 @@ class ErrorBoundary extends React.Component {
         });
     }
 
-    handleReset = () => {
+    handleReset = (): void => {
         this.setState({
             hasError: false,
             error: null,
@@ -34,11 +54,11 @@ class ErrorBoundary extends React.Component {
         });
     };
 
-    handleReload = () => {
+    handleReload = (): void => {
         window.location.reload();
     };
 
-    render() {
+    render(): ReactNode {
         if (this.state.hasError) {
             return (
                 <div style={{
