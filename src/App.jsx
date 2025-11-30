@@ -310,6 +310,7 @@ function App() {
                     show={detailsModal.show}
                     data={detailsModal.data}
                     onClose={hideDetailsModalHandler}
+                    currentDate={selectedDate}
                 />
 
                 <ErrorBoundaryTest />
