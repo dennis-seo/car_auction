@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import VehicleHistory from './VehicleHistory';
+import PriceChart from './PriceChart';
 import './DetailsModal.css';
 
 /**
  * 상세 정보 모달 컴포넌트
- * 탭 구조: 상세정보 / 시세 히스토리
+ * 탭 구조: 상세정보 / 시세 히스토리 / 시세 그래프
  * ESC 키 처리 및 body 스크롤 제어는 useModal 훅에서 처리
  */
 const DetailsModal = ({ show, data, onClose, currentDate }) => {
@@ -96,6 +97,13 @@ const DetailsModal = ({ show, data, onClose, currentDate }) => {
                         type="button"
                     >
                         시세 히스토리
+                    </button>
+                    <button
+                        className={`details-tab ${activeTab === 'chart' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('chart')}
+                        type="button"
+                    >
+                        시세 그래프
                     </button>
                 </div>
 
@@ -208,8 +216,13 @@ const DetailsModal = ({ show, data, onClose, currentDate }) => {
                                 </div>
                             )}
                         </>
-                    ) : (
+                    ) : activeTab === 'history' ? (
                         <VehicleHistory
+                            vehicleData={data}
+                            currentAuctionDate={auctionDateForAPI}
+                        />
+                    ) : (
+                        <PriceChart
                             vehicleData={data}
                             currentAuctionDate={auctionDateForAPI}
                         />
