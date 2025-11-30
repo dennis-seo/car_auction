@@ -1,15 +1,58 @@
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '../utils/apiConfig';
+import type { AuctionItem, Pagination } from '../types';
+
+/**
+ * 히스토리 조회 파라미터
+ */
+export interface FetchHistoryParams {
+    /** 제조사 ID */
+    manufacturerId?: string | null;
+    /** 모델 ID */
+    modelId?: string | null;
+    /** 트림 ID (선택) */
+    trimId?: string | null;
+    /** 조회 개수 (기본 10) */
+    limit?: number;
+    /** 오프셋 (기본 0) */
+    offset?: number;
+    /** 제외할 경매일 (현재 보고 있는 차량의 경매일) */
+    excludeDate?: string | null;
+}
+
+/**
+ * useVehicleHistory 훅 반환 타입
+ */
+export interface UseVehicleHistoryReturn {
+    /** 히스토리 데이터 */
+    history: AuctionItem[];
+    /** 로딩 상태 */
+    loading: boolean;
+    /** 에러 메시지 */
+    error: string | null;
+    /** 페이지네이션 정보 */
+    pagination: Pagination;
+    /** 히스토리 조회 함수 */
+    fetchHistory: (params: FetchHistoryParams) => Promise<void>;
+    /** 다음 페이지 로드 */
+    loadMore: (params: FetchHistoryParams) => Promise<void>;
+    /** 이전 페이지 로드 */
+    loadPrev: (params: FetchHistoryParams) => Promise<void>;
+    /** 특정 페이지로 이동 */
+    goToPage: (page: number, params: FetchHistoryParams) => Promise<void>;
+    /** 히스토리 초기화 */
+    resetHistory: () => void;
+}
 
 /**
  * 차량 히스토리 조회 훅
  * manufacturer_id, model_id, trim_id 기준으로 과거 경매 기록을 조회
  */
-export const useVehicleHistory = () => {
-    const [history, setHistory] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [pagination, setPagination] = useState({
+export const useVehicleHistory = (): UseVehicleHistoryReturn => {
+    const [history, setHistory] = useState<AuctionItem[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+    const [pagination, setPagination] = useState<Pagination>({
         total: 0,
         limit: 10,
         offset: 0,
@@ -18,13 +61,6 @@ export const useVehicleHistory = () => {
 
     /**
      * 히스토리 조회
-     * @param {Object} params - 검색 파라미터
-     * @param {string} params.manufacturerId - 제조사 ID
-     * @param {string} params.modelId - 모델 ID
-     * @param {string} params.trimId - 트림 ID (선택)
-     * @param {number} params.limit - 조회 개수 (기본 10)
-     * @param {number} params.offset - 오프셋 (기본 0)
-     * @param {string} params.excludeDate - 제외할 경매일 (현재 보고 있는 차량의 경매일)
      */
     const fetchHistory = useCallback(async ({
         manufacturerId,
@@ -33,7 +69,7 @@ export const useVehicleHistory = () => {
         limit = 10,
         offset = 0,
         excludeDate
-    }) => {
+    }: FetchHistoryParams): Promise<void> => {
         // 최소한 modelId는 필요
         if (!modelId) {
             setHistory([]);
@@ -87,9 +123,9 @@ export const useVehicleHistory = () => {
             const data = await response.json();
 
             // 현재 보고 있는 차량의 경매일 제외
-            let filteredItems = data.items || [];
+            let filteredItems: AuctionItem[] = data.items || [];
             if (excludeDate) {
-                filteredItems = filteredItems.filter(item => item.auction_date !== excludeDate);
+                filteredItems = filteredItems.filter((item: AuctionItem) => item.auction_date !== excludeDate);
             }
 
             // 디버그 모드에서만 응답 결과 출력
@@ -110,7 +146,8 @@ export const useVehicleHistory = () => {
             });
 
         } catch (err) {
-            setError(err.message);
+            const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류';
+            setError(errorMessage);
             setHistory([]);
         } finally {
             setLoading(false);
@@ -120,7 +157,7 @@ export const useVehicleHistory = () => {
     /**
      * 다음 페이지 로드
      */
-    const loadMore = useCallback(async (params) => {
+    const loadMore = useCallback(async (params: FetchHistoryParams): Promise<void> => {
         const newOffset = pagination.offset + pagination.limit;
         await fetchHistory({ ...params, offset: newOffset });
     }, [pagination, fetchHistory]);
@@ -128,7 +165,7 @@ export const useVehicleHistory = () => {
     /**
      * 이전 페이지 로드
      */
-    const loadPrev = useCallback(async (params) => {
+    const loadPrev = useCallback(async (params: FetchHistoryParams): Promise<void> => {
         const newOffset = Math.max(0, pagination.offset - pagination.limit);
         await fetchHistory({ ...params, offset: newOffset });
     }, [pagination, fetchHistory]);
@@ -136,7 +173,7 @@ export const useVehicleHistory = () => {
     /**
      * 특정 페이지로 이동
      */
-    const goToPage = useCallback(async (page, params) => {
+    const goToPage = useCallback(async (page: number, params: FetchHistoryParams): Promise<void> => {
         const newOffset = (page - 1) * pagination.limit;
         await fetchHistory({ ...params, offset: newOffset });
     }, [pagination.limit, fetchHistory]);
@@ -144,7 +181,7 @@ export const useVehicleHistory = () => {
     /**
      * 히스토리 초기화
      */
-    const resetHistory = useCallback(() => {
+    const resetHistory = useCallback((): void => {
         setHistory([]);
         setLoading(false);
         setError(null);
@@ -163,3 +200,5 @@ export const useVehicleHistory = () => {
         resetHistory,
     };
 };
+
+export default useVehicleHistory;
