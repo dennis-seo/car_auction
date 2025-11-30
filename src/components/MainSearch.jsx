@@ -9,14 +9,16 @@ import DynamicFilter from './FuelFilter.jsx';
 /**
  * 메인 검색 영역 컴포넌트
  */
-const MainSearch = ({ 
-    data, 
-    activeFilters, 
-    searchQuery, 
+const MainSearch = ({
+    data,
+    activeFilters,
+    filterIds,
+    searchQuery,
     budgetRange,
     yearRange,
-    onUpdateFilter, 
-    onSearchQueryChange, 
+    onUpdateFilter,
+    onFilterIdChange,
+    onSearchQueryChange,
     onBudgetRangeChange,
     onYearRangeChange
 }) => {
@@ -76,14 +78,19 @@ const MainSearch = ({
                     <BrandSelector
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
+                        onFilterIdChange={onFilterIdChange}
                     />
                     <ModelSelector
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
+                        filterIds={filterIds}
+                        onFilterIdChange={onFilterIdChange}
                     />
                     <SubmodelSelector
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
+                        filterIds={filterIds}
+                        onFilterIdChange={onFilterIdChange}
                     />
                 </div>
             </div>

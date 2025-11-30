@@ -12,6 +12,7 @@ import CarCardDesktop from './CarCardDesktop.jsx';
 const CarGallery = ({
     data,
     activeFilters,
+    filterIds,
     searchQuery,
     budgetRange,
     yearRange,
@@ -27,7 +28,8 @@ const CarGallery = ({
         searchQuery,
         budgetRange,
         yearRange,
-        lastSortedFilter
+        lastSortedFilter,
+        filterIds
     );
 
     // 렌더링할 카드 컴포넌트 결정
@@ -72,6 +74,7 @@ const CarGallery = ({
 CarGallery.propTypes = {
     data: PropTypes.array.isRequired,
     activeFilters: PropTypes.object.isRequired,
+    filterIds: PropTypes.object,
     searchQuery: PropTypes.string,
     budgetRange: PropTypes.object,
     yearRange: PropTypes.array,

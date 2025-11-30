@@ -3,8 +3,9 @@ import { loadSearchTree } from '../utils/dataUtils';
 
 /**
  * 세부모델 선택 컴포넌트
+ * ID 기반 필터링을 위해 onFilterIdChange 콜백 지원
  */
-const SubmodelSelector = ({ activeFilters, onUpdateFilter }) => {
+const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTree, setSearchTree] = useState(null);
     const dropdownRef = useRef(null);
@@ -55,23 +56,44 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter }) => {
         }
     };
 
-    const handleSubmodelSelect = (submodelLabel) => {
+    const handleSubmodelSelect = (submodel) => {
+        const submodelLabel = submodel?.trim || submodel?.label || null;
+        const trimId = submodel?.id || null;
+
         onUpdateFilter('submodel', submodelLabel ? [submodelLabel] : [], 'set');
+
+        // ID 기반 필터링을 위한 콜백 (라벨 정보도 함께 전달)
+        if (onFilterIdChange) {
+            onFilterIdChange(
+                {
+                    manufacturerId: filterIds?.manufacturerId || null,
+                    modelId: filterIds?.modelId || null,
+                    trimId: trimId,
+                },
+                {
+                    manufacturer: currentBrand,
+                    model: currentModel,
+                    trim: submodelLabel,
+                }
+            );
+        }
+
         setIsOpen(false);
     };
 
     const getAvailableSubmodels = () => {
         if (!searchTree || !currentBrand || !currentModel) return [];
-        
+
         // 국산과 수입 브랜드 모두에서 검색
         const allBrands = [
             ...(searchTree.domestic || []),
             ...(searchTree.import || [])
         ];
-        
+
         const brand = allBrands.find(b => b.label === currentBrand);
-        const model = brand?.models?.find(m => m.label === currentModel);
-        return model?.submodels || [];
+        const model = brand?.models?.find(m => (m.model || m.label) === currentModel);
+        // trims 또는 submodels 둘 다 지원
+        return model?.trims || model?.submodels || [];
     };
 
     const renderSubmodelOptions = () => {
@@ -88,17 +110,20 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter }) => {
             );
         }
 
-        return submodels.map(submodel => (
-            <div
-                key={submodel.label}
-                className={`select-option${currentSubmodel === submodel.label ? ' selected' : ''}`}
-                role="option"
-                aria-selected={currentSubmodel === submodel.label}
-                onClick={() => handleSubmodelSelect(submodel.label)}
-            >
-                {submodel.label}
-            </div>
-        ));
+        return submodels.map(submodel => {
+            const submodelLabel = submodel.trim || submodel.label;
+            return (
+                <div
+                    key={submodelLabel}
+                    className={`select-option${currentSubmodel === submodelLabel ? ' selected' : ''}`}
+                    role="option"
+                    aria-selected={currentSubmodel === submodelLabel}
+                    onClick={() => handleSubmodelSelect(submodel)}
+                >
+                    {submodelLabel}
+                </div>
+            );
+        });
     };
 
     const isDisabled = !currentBrand || !currentModel;

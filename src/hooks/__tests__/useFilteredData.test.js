@@ -11,7 +11,10 @@ describe('useFilteredData', () => {
             km: 50000,
             fuel: '가솔린',
             auction_name: '현대 경매장',
-            region: '서울'
+            region: '서울',
+            manufacturer_id: '5',
+            model_id: '100',
+            trim_id: '1001'
         },
         {
             sell_number: '002',
@@ -21,7 +24,10 @@ describe('useFilteredData', () => {
             km: 30000,
             fuel: '디젤',
             auction_name: '현대 경매장',
-            region: '경기'
+            region: '경기',
+            manufacturer_id: '2',
+            model_id: '140',
+            trim_id: '2001'
         },
         {
             sell_number: '003',
@@ -31,7 +37,10 @@ describe('useFilteredData', () => {
             km: 20000,
             fuel: '가솔린',
             auction_name: '롯데 경매장',
-            region: '서울'
+            region: '서울',
+            manufacturer_id: '5',
+            model_id: '111',
+            trim_id: '1002'
         }
     ];
 
@@ -78,5 +87,53 @@ describe('useFilteredData', () => {
         );
 
         expect(result.current).toEqual([]);
+    });
+
+    test('manufacturerId로 필터링한다', () => {
+        const filterIds = { manufacturerId: '5', modelId: null, trimId: null };
+        const { result } = renderHook(() =>
+            useFilteredData(mockData, emptyFilters, '', null, null, null, filterIds)
+        );
+
+        expect(result.current).toHaveLength(2);
+        expect(result.current.every(item => item.manufacturer_id === '5')).toBe(true);
+    });
+
+    test('modelId로 필터링한다', () => {
+        const filterIds = { manufacturerId: null, modelId: '111', trimId: null };
+        const { result } = renderHook(() =>
+            useFilteredData(mockData, emptyFilters, '', null, null, null, filterIds)
+        );
+
+        expect(result.current).toHaveLength(1);
+        expect(result.current[0].title).toBe('[현대] 소나타');
+    });
+
+    test('trimId로 필터링한다', () => {
+        const filterIds = { manufacturerId: null, modelId: null, trimId: '2001' };
+        const { result } = renderHook(() =>
+            useFilteredData(mockData, emptyFilters, '', null, null, null, filterIds)
+        );
+
+        expect(result.current).toHaveLength(1);
+        expect(result.current[0].title).toBe('[기아] K5');
+    });
+
+    test('manufacturerId와 modelId 조합으로 필터링한다', () => {
+        const filterIds = { manufacturerId: '5', modelId: '100', trimId: null };
+        const { result } = renderHook(() =>
+            useFilteredData(mockData, emptyFilters, '', null, null, null, filterIds)
+        );
+
+        expect(result.current).toHaveLength(1);
+        expect(result.current[0].title).toBe('[현대] 아반떼');
+    });
+
+    test('filterIds가 null이면 ID 필터를 적용하지 않는다', () => {
+        const { result } = renderHook(() =>
+            useFilteredData(mockData, emptyFilters, '', null, null, null, null)
+        );
+
+        expect(result.current).toHaveLength(3);
     });
 });

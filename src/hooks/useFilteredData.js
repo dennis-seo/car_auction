@@ -9,6 +9,7 @@ import { filterData, sortFilteredData } from '../utils/dataUtils';
  * @param {Object} budgetRange - 예산 범위
  * @param {Array} yearRange - 연식 범위
  * @param {string} lastSortedFilter - 마지막 정렬 필터
+ * @param {Object} filterIds - ID 기반 필터 (manufacturerId, modelId, trimId)
  * @returns {Array} 필터링 및 정렬된 데이터
  */
 export const useFilteredData = (
@@ -17,16 +18,17 @@ export const useFilteredData = (
     searchQuery,
     budgetRange,
     yearRange,
-    lastSortedFilter
+    lastSortedFilter,
+    filterIds = null
 ) => {
     return useMemo(() => {
         if (!data || data.length === 0) {
             return [];
         }
 
-        const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange);
+        const filtered = filterData(data, activeFilters, searchQuery, budgetRange, yearRange, filterIds);
         const sorted = sortFilteredData(filtered, activeFilters, budgetRange, yearRange, lastSortedFilter);
 
         return sorted;
-    }, [data, activeFilters, searchQuery, budgetRange, yearRange, lastSortedFilter]);
+    }, [data, activeFilters, searchQuery, budgetRange, yearRange, lastSortedFilter, filterIds]);
 };

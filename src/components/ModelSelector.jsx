@@ -3,8 +3,9 @@ import { loadSearchTree } from '../utils/dataUtils';
 
 /**
  * 모델 선택 컴포넌트
+ * ID 기반 필터링을 위해 onFilterIdChange 콜백 지원
  */
-const ModelSelector = ({ activeFilters, onUpdateFilter }) => {
+const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTree, setSearchTree] = useState(null);
     const dropdownRef = useRef(null);
@@ -54,10 +55,30 @@ const ModelSelector = ({ activeFilters, onUpdateFilter }) => {
         }
     };
 
-    const handleModelSelect = (modelLabel) => {
+    const handleModelSelect = (model) => {
+        const modelLabel = model?.model || model?.label || null;
+        const modelId = model?.id || null;
+
         // 모델 변경 시 세부트림도 초기화
         onUpdateFilter('model', modelLabel ? [modelLabel] : [], 'set');
         onUpdateFilter('submodel', [], 'clear');
+
+        // ID 기반 필터링을 위한 콜백 (라벨 정보도 함께 전달)
+        if (onFilterIdChange) {
+            onFilterIdChange(
+                {
+                    manufacturerId: filterIds?.manufacturerId || null,
+                    modelId: modelId,
+                    trimId: null,
+                },
+                {
+                    manufacturer: currentBrand,
+                    model: modelLabel,
+                    trim: null,
+                }
+            );
+        }
+
         setIsOpen(false);
     };
 
@@ -85,17 +106,20 @@ const ModelSelector = ({ activeFilters, onUpdateFilter }) => {
             );
         }
 
-        return models.map(model => (
-            <div
-                key={model.label}
-                className={`select-option${currentModel === model.label ? ' selected' : ''}`}
-                role="option"
-                aria-selected={currentModel === model.label}
-                onClick={() => handleModelSelect(model.label)}
-            >
-                {model.label}
-            </div>
-        ));
+        return models.map(model => {
+            const modelLabel = model.model || model.label;
+            return (
+                <div
+                    key={modelLabel}
+                    className={`select-option${currentModel === modelLabel ? ' selected' : ''}`}
+                    role="option"
+                    aria-selected={currentModel === modelLabel}
+                    onClick={() => handleModelSelect(model)}
+                >
+                    {modelLabel}
+                </div>
+            );
+        });
     };
 
     return (

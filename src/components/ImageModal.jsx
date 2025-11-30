@@ -2,7 +2,6 @@ import React from 'react';
 
 /**
  * 이미지 모달 컴포넌트
- * ESC 키 처리 및 body 스크롤 제어는 useModal 훅에서 처리
  */
 const ImageModal = ({ show, imageUrl, onClose }) => {
 

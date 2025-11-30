@@ -9,6 +9,7 @@ import TableHeaderFilter from './TableHeaderFilter.jsx';
 const CarTable = ({
     data,
     activeFilters,
+    filterIds,
     searchQuery,
     budgetRange,
     yearRange,
@@ -25,7 +26,8 @@ const CarTable = ({
         searchQuery,
         budgetRange,
         yearRange,
-        lastSortedFilter
+        lastSortedFilter,
+        filterIds
     );
 
     // 테이블 필터 옵션을 useMemo로 최적화

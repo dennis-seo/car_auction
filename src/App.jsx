@@ -28,6 +28,11 @@ function App() {
     const [activeFilters, setActiveFilters] = useState({
         title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
     });
+    const [filterIds, setFilterIds] = useState({
+        manufacturerId: null,
+        modelId: null,
+        trimId: null
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [budgetRange, setBudgetRange] = useState(null);
     const [yearRange, setYearRange] = useState(null);
@@ -124,6 +129,11 @@ function App() {
                 setActiveFilters({
                     title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
                 });
+                setFilterIds({
+                    manufacturerId: null,
+                    modelId: null,
+                    trimId: null
+                });
                 setSearchQuery('');
                 setBudgetRange(null);
                 setYearRange(null);
@@ -158,11 +168,32 @@ function App() {
         }
     }, [selectedDate, setAllData]);
 
+    // 필터 ID 업데이트 핸들러
+    const handleFilterIdChange = useCallback((newFilterIds, filterLabels = {}) => {
+        // API URL 빌드
+        const buildApiUrl = (ids) => {
+            if (!ids) return null;
+            const params = new URLSearchParams();
+            if (ids.manufacturerId) params.append('manufacturer_id', ids.manufacturerId);
+            if (ids.modelId) params.append('model_id', ids.modelId);
+            if (ids.trimId) params.append('trim_id', ids.trimId);
+            const queryString = params.toString();
+            return queryString ? `${API_ENDPOINTS.vehicles}?${queryString}` : null;
+        };
+
+        console.log('[App] 필터 ID 변경:', {
+            ids: newFilterIds,
+            labels: filterLabels,
+            apiUrl: buildApiUrl(newFilterIds)
+        });
+        setFilterIds(newFilterIds);
+    }, []);
+
     // 필터 업데이트
     const updateFilter = useCallback((filterType, value, action = 'toggle') => {
         setActiveFilters(prev => {
             const newFilters = { ...prev };
-            
+
             if (action === 'clear') {
                 newFilters[filterType] = [];
             } else if (action === 'set') {
@@ -175,13 +206,40 @@ function App() {
                     newFilters[filterType] = [...currentValues, value];
                 }
             }
-            
+
             // 연식 필터가 설정되면 최근 정렬 우선순위를 'year'로 갱신
             if (filterType === 'year') {
                 const arr = newFilters.year;
                 if (Array.isArray(arr) && arr.length === 2) {
                     setLastSortedFilter('year');
                 }
+            }
+
+            // 브랜드/모델/서브모델 필터 제거 시 filterIds도 초기화
+            // 필터가 비워지면 해당 ID와 하위 계층 ID도 초기화
+            if (filterType === 'title' && newFilters.title.length === 0) {
+                setFilterIds(prev => ({
+                    ...prev,
+                    manufacturerId: null,
+                    modelId: null,
+                    trimId: null
+                }));
+                // 브랜드 제거 시 모델/서브모델도 함께 초기화
+                newFilters.model = [];
+                newFilters.submodel = [];
+            } else if (filterType === 'model' && newFilters.model.length === 0) {
+                setFilterIds(prev => ({
+                    ...prev,
+                    modelId: null,
+                    trimId: null
+                }));
+                // 모델 제거 시 서브모델도 함께 초기화
+                newFilters.submodel = [];
+            } else if (filterType === 'submodel' && newFilters.submodel.length === 0) {
+                setFilterIds(prev => ({
+                    ...prev,
+                    trimId: null
+                }));
             }
 
             return newFilters;
@@ -244,27 +302,29 @@ function App() {
             <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>로딩 중...</div>}>
                 {showMainSearch && (
                     <MainSearch
-                    data={allData}
-                    activeFilters={activeFilters}
-                    searchQuery={searchQuery}
-                    budgetRange={budgetRange}
-                    yearRange={yearRange}
-                    onUpdateFilter={updateFilter}
-                    onSearchQueryChange={setSearchQuery}
-                    onBudgetRangeChange={(range) => {
-                        setBudgetRange(range);
-                        if (range) {
-                            setLastSortedFilter('budget');
-                        }
-                    }}
-                    onYearRangeChange={(range) => {
-                        setYearRange(range);
-                        if (Array.isArray(range) && range.length === 2) {
-                            setLastSortedFilter('year');
-                        }
-                    }}
-                />
-            )}
+                        data={allData}
+                        activeFilters={activeFilters}
+                        filterIds={filterIds}
+                        searchQuery={searchQuery}
+                        budgetRange={budgetRange}
+                        yearRange={yearRange}
+                        onUpdateFilter={updateFilter}
+                        onFilterIdChange={handleFilterIdChange}
+                        onSearchQueryChange={setSearchQuery}
+                        onBudgetRangeChange={(range) => {
+                            setBudgetRange(range);
+                            if (range) {
+                                setLastSortedFilter('budget');
+                            }
+                        }}
+                        onYearRangeChange={(range) => {
+                            setYearRange(range);
+                            if (Array.isArray(range) && range.length === 2) {
+                                setLastSortedFilter('year');
+                            }
+                        }}
+                    />
+                )}
 
             <ActiveFilters
                 activeFilters={activeFilters}
@@ -279,6 +339,7 @@ function App() {
             <CarGallery
                 data={allData}
                 activeFilters={activeFilters}
+                filterIds={filterIds}
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
                 yearRange={yearRange}
@@ -290,6 +351,7 @@ function App() {
             <CarTable
                 data={allData}
                 activeFilters={activeFilters}
+                filterIds={filterIds}
                 searchQuery={searchQuery}
                 budgetRange={budgetRange}
                 yearRange={yearRange}

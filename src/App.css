@@ -982,35 +982,125 @@ tbody tr:hover {
     font-size: 16px;
 }
 
-#date-selector-container select {
+/* 커스텀 드롭다운 컨테이너 */
+.date-selector-dropdown {
+    position: relative;
+}
+
+/* 드롭다운 버튼 (기존 select 대체) */
+#date-selector-container .date-selector-input {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     height: 44px;
     min-width: 220px;
-    padding: 0 44px 0 44px; /* left for calendar icon */
+    padding: 0 14px 0 44px;
     border-radius: 12px;
     border: 1px solid #e4e9f1;
     background-color: #ffffff;
     color: #2c3e50;
     font-size: 15px;
-    line-height: 44px;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.02);
     cursor: pointer;
-    appearance: none;
-    background-image:
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23808b98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'),
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%23808b98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
-    background-repeat: no-repeat, no-repeat;
-    background-position: 14px center, right 14px center;
-    background-size: 18px 18px, 12px 12px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23808b98" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>');
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 18px 18px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-#date-selector-container select:hover {
+#date-selector-container .date-selector-input:hover {
     border-color: #cfd8e6;
 }
 
-#date-selector-container select:focus {
+#date-selector-container .date-selector-input:focus {
     border-color: #90caf9;
     box-shadow: 0 0 0 4px rgba(144, 202, 249, 0.25);
     outline: none;
+}
+
+#date-selector-container .date-selector-input.open {
+    border-color: #90caf9;
+    box-shadow: 0 0 0 4px rgba(144, 202, 249, 0.25);
+}
+
+#date-selector-container .date-selector-input.disabled {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.date-selector-value {
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.date-selector-arrow {
+    color: #808b98;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.date-selector-input.open .date-selector-arrow {
+    transform: rotate(180deg);
+}
+
+/* 드롭다운 옵션 목록 */
+.date-selector-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+    background: #ffffff;
+    border: 1px solid #e4e9f1;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(21, 45, 72, 0.12);
+    z-index: 1000;
+}
+
+.date-selector-option {
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.date-selector-option:hover {
+    background-color: #f0f4f8;
+}
+
+.date-selector-option.selected {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    font-weight: 500;
+}
+
+/* 스크롤바 스타일링 */
+.date-selector-options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.date-selector-options::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.date-selector-options::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.date-selector-options::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 @media (max-width: 560px) {
@@ -1019,9 +1109,12 @@ tbody tr:hover {
         align-items: stretch;
         padding: 12px;
     }
-    #date-selector-container select {
+    #date-selector-container .date-selector-input {
         width: 100%;
         min-width: 0;
+    }
+    .date-selector-dropdown {
+        width: 100%;
     }
 }
 /* --- 날짜 선택 카드 스타일 끝 --- */

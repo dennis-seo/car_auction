@@ -1,6 +1,7 @@
 import { appState, parsedMileageRanges, parsedPriceRanges } from './appState';
 import { API_ENDPOINTS } from './apiConfig';
 import auctionManager from './auctionManager';
+import { FUEL_GROUPS, VEHICLE_TYPE_GROUPS, findGroupLabel } from './fuelGroups';
 
 // 상수 정의
 const DATE_FORMATS = {
@@ -256,20 +257,18 @@ export function formatYYMMDDToLabel(input) {
 
 /**
  * 데이터를 필터링합니다. (최적화 버전)
+ * @param {Array} data - 필터링할 데이터
+ * @param {Object} activeFilters - 활성화된 필터들
+ * @param {string} searchQuery - 검색어
+ * @param {Object} budgetRange - 예산 범위
+ * @param {Array} yearRange - 연식 범위
+ * @param {Object} filterIds - ID 기반 필터 (manufacturerId, modelId, trimId)
  */
-export function filterData(data, activeFilters, searchQuery, budgetRange, yearRange) {
+export function filterData(data, activeFilters, searchQuery, budgetRange, yearRange, filterIds = null) {
     // 사전 처리: 검색어 소문자 변환 (한 번만)
     const lowerQuery = (searchQuery || '').toLowerCase();
 
-    // 사전 처리: 모델/서브모델 정규식 결과 캐싱
-    const modelArr = activeFilters.model || [];
-    const cleanedModels = modelArr.map(val => val.replace(/\s*\([^)]*\)\s*/g, '').trim());
-
-    const submodelArr = activeFilters.submodel || [];
-    const cleanedSubmodels = submodelArr.map(val => val.replace(/\s*\([^)]*\)\s*$/, '').trim());
-
     // 필터 배열 사전 추출 (반복 접근 최소화)
-    const titleArr = activeFilters.title || [];
     const auctionArr = activeFilters.auction_name || [];
     const regionArr = activeFilters.region || [];
     const fuelArr = activeFilters.fuel || [];
@@ -284,7 +283,39 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
     const hasBudget = !!budgetRange;
     const hasSearch = lowerQuery !== '';
 
-    return data.filter(row => {
+    // ID 기반 필터 체크
+    const hasManufacturerId = filterIds?.manufacturerId != null;
+    const hasModelId = filterIds?.modelId != null;
+    const hasTrimId = filterIds?.trimId != null;
+
+    // 디버그 로그
+    if (process.env.NODE_ENV === 'development') {
+        // 실제 데이터의 manufacturer_id 값들 확인
+        const uniqueManufacturerIds = [...new Set(data.map(row => row.manufacturer_id))].slice(0, 10);
+        console.log('[filterData] 필터링 시작:', {
+            totalData: data.length,
+            filterIds,
+            hasManufacturerId,
+            hasModelId,
+            hasTrimId,
+            sampleRow: data[0] ? {
+                manufacturer_id: data[0].manufacturer_id,
+                model_id: data[0].model_id,
+                trim_id: data[0].trim_id,
+                // 타입 확인
+                manufacturer_id_type: typeof data[0].manufacturer_id
+            } : null,
+            uniqueManufacturerIds,
+            filterManufacturerId: filterIds?.manufacturerId,
+            filterManufacturerIdType: typeof filterIds?.manufacturerId
+        });
+    }
+
+    const result = data.filter(row => {
+        // ID 기반 필터링 (가장 빠른 체크 - 정확한 매칭)
+        if (hasManufacturerId && String(row.manufacturer_id) !== String(filterIds.manufacturerId)) return false;
+        if (hasModelId && String(row.model_id) !== String(filterIds.modelId)) return false;
+        if (hasTrimId && String(row.trim_id) !== String(filterIds.trimId)) return false;
         // 연식 필터 (가장 빠른 체크)
         if (hasYearFilter) {
             const year = safeParseInt(row.year);
@@ -299,17 +330,23 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
         if (auctionArr.length > 0 && !auctionArr.includes(row.auction_name)) return false;
         if (regionArr.length > 0 && !regionArr.includes(row.region)) return false;
 
-        // 연료/차량용도 필터
-        if (fuelArr.length > 0 && !fuelArr.includes(row.fuel)) return false;
+        // 연료/차량용도 필터 - 그룹 매핑을 통한 비교
+        if (fuelArr.length > 0) {
+            const rowFuel = row.fuel;
+            // 직접 매칭 또는 그룹 라벨 매칭
+            const fuelGroupLabel = findGroupLabel(rowFuel, FUEL_GROUPS);
+            const fuelMatches = fuelArr.includes(rowFuel) || (fuelGroupLabel && fuelArr.includes(fuelGroupLabel));
+            if (!fuelMatches) return false;
+        }
         if (vehicleTypeArr.length > 0) {
             const vehicleType = row.vehicleType || row.usage || row.type || row.purpose || row.fuel;
-            if (!vehicleTypeArr.includes(vehicleType)) return false;
+            // 직접 매칭 또는 그룹 라벨 매칭
+            const vehicleGroupLabel = findGroupLabel(vehicleType, VEHICLE_TYPE_GROUPS);
+            const vehicleMatches = vehicleTypeArr.includes(vehicleType) || (vehicleGroupLabel && vehicleTypeArr.includes(vehicleGroupLabel));
+            if (!vehicleMatches) return false;
         }
 
-        // 브랜드/모델/서브모델 필터
-        if (titleArr.length > 0 && !(row.title && titleArr.some(val => row.title.includes(val)))) return false;
-        if (cleanedModels.length > 0 && !(row.title && cleanedModels.some(val => row.title.includes(val)))) return false;
-        if (cleanedSubmodels.length > 0 && !(row.title && cleanedSubmodels.some(val => row.title.includes(val)))) return false;
+        // 브랜드/모델/서브모델 필터 (ID 기반으로만 필터링)
 
         // 검색어 필터
         if (hasSearch) {
@@ -356,6 +393,17 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
 
         return true;
     });
+
+    // 디버그: 필터링 결과
+    if (process.env.NODE_ENV === 'development' && (hasManufacturerId || hasModelId || hasTrimId)) {
+        console.log('[filterData] 필터링 결과:', {
+            before: data.length,
+            after: result.length,
+            filterIds
+        });
+    }
+
+    return result;
 }
 
 /**

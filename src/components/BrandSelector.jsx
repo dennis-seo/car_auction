@@ -3,8 +3,9 @@ import { loadSearchTree } from '../utils/dataUtils';
 
 /**
  * 브랜드 선택 컴포넌트
+ * ID 기반 필터링을 위해 onFilterIdChange 콜백 지원
  */
-const BrandSelector = ({ activeFilters, onUpdateFilter }) => {
+const BrandSelector = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTree, setSearchTree] = useState(null);
     const dropdownRef = useRef(null);
@@ -50,11 +51,31 @@ const BrandSelector = ({ activeFilters, onUpdateFilter }) => {
         }
     };
 
-    const handleBrandSelect = (brandLabel) => {
+    const handleBrandSelect = (brand) => {
+        const brandLabel = brand?.label || null;
+        const brandId = brand?.id || null;
+
         // 브랜드 변경 시 모델과 세부트림도 초기화
         onUpdateFilter('title', brandLabel ? [brandLabel] : [], 'set');
         onUpdateFilter('model', [], 'clear');
         onUpdateFilter('submodel', [], 'clear');
+
+        // ID 기반 필터링을 위한 콜백 (라벨 정보도 함께 전달)
+        if (onFilterIdChange) {
+            onFilterIdChange(
+                {
+                    manufacturerId: brandId,
+                    modelId: null,
+                    trimId: null,
+                },
+                {
+                    manufacturer: brandLabel,
+                    model: null,
+                    trim: null,
+                }
+            );
+        }
+
         setIsOpen(false);
     };
 
@@ -76,7 +97,7 @@ const BrandSelector = ({ activeFilters, onUpdateFilter }) => {
                         className={`select-option${currentBrand === brand.label ? ' selected' : ''}`}
                         role="option"
                         aria-selected={currentBrand === brand.label}
-                        onClick={() => handleBrandSelect(brand.label)}
+                        onClick={() => handleBrandSelect(brand)}
                     >
                         {brand.label}
                     </div>
@@ -88,7 +109,7 @@ const BrandSelector = ({ activeFilters, onUpdateFilter }) => {
                         className={`select-option${currentBrand === brand.label ? ' selected' : ''}`}
                         role="option"
                         aria-selected={currentBrand === brand.label}
-                        onClick={() => handleBrandSelect(brand.label)}
+                        onClick={() => handleBrandSelect(brand)}
                     >
                         {brand.label}
                     </div>

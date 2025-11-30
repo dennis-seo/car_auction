@@ -1,16 +1,55 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { formatYYMMDDToLabel } from '../utils/dataUtils';
 
 /**
  * 경매 날짜 선택 컴포넌트
- * 사용 가능한 날짜 목록에서 날짜를 선택할 수 있는 드롭다운을 제공합니다.
+ * 사용 가능한 날짜 목록에서 날짜를 선택할 수 있는 커스텀 드롭다운을 제공합니다.
  */
 const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disabled = false, loading = false }) => {
-    const handleChange = (e) => {
-        const value = e.target.value;
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const handleSelect = (value) => {
         onDateChange(value);
+        setIsOpen(false);
     };
+
+    const toggleDropdown = () => {
+        if (!disabled && !loading) {
+            setIsOpen(!isOpen);
+        }
+    };
+
+    // 외부 클릭 시 드롭다운 닫기
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // ESC 키로 닫기
+    useEffect(() => {
+        const handleEsc = (event) => {
+            if (event.key === 'Escape') {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleEsc);
+            return () => document.removeEventListener('keydown', handleEsc);
+        }
+    }, [isOpen]);
+
+    const displayLabel = selectedDate
+        ? formatYYMMDDToLabel(selectedDate)
+        : (loading ? '날짜를 불러오는 중...' : '날짜를 선택하세요');
 
     // 에러 상태 처리
     if (!Array.isArray(availableDates)) {
@@ -53,27 +92,50 @@ const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disable
     }
 
     return (
-        <div id="date-selector-container" className="date-selector">
+        <div id="date-selector-container" className="date-selector" ref={dropdownRef}>
             <label htmlFor="date-selector" className="date-selector-label">
                 경매 날짜 선택:
             </label>
-            <select 
-                id="date-selector"
-                className="date-selector-input"
-                value={selectedDate} 
-                onChange={handleChange}
-                disabled={disabled || loading}
-                aria-describedby="date-selector-help"
-            >
-                <option value="">
-                    {loading ? '날짜를 불러오는 중...' : '날짜를 선택하세요'}
-                </option>
-                {availableDates.map(date => (
-                    <option key={date} value={date}>
-                        {formatYYMMDDToLabel(date)}
-                    </option>
-                ))}
-            </select>
+            <div className="date-selector-dropdown">
+                <button
+                    id="date-selector"
+                    type="button"
+                    className={`date-selector-input ${isOpen ? 'open' : ''} ${disabled || loading ? 'disabled' : ''}`}
+                    onClick={toggleDropdown}
+                    disabled={disabled || loading}
+                    aria-haspopup="listbox"
+                    aria-expanded={isOpen}
+                    aria-describedby="date-selector-help"
+                >
+                    <span className="date-selector-value">{displayLabel}</span>
+                    <svg className="date-selector-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                {isOpen && (
+                    <ul className="date-selector-options" role="listbox">
+                        <li
+                            className={`date-selector-option ${!selectedDate ? 'selected' : ''}`}
+                            onClick={() => handleSelect('')}
+                            role="option"
+                            aria-selected={!selectedDate}
+                        >
+                            날짜를 선택하세요
+                        </li>
+                        {availableDates.map(date => (
+                            <li
+                                key={date}
+                                className={`date-selector-option ${selectedDate === date ? 'selected' : ''}`}
+                                onClick={() => handleSelect(date)}
+                                role="option"
+                                aria-selected={selectedDate === date}
+                            >
+                                {formatYYMMDDToLabel(date)}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
             <div id="date-selector-help" className="sr-only">
                 경매 날짜를 선택하면 해당 날짜의 차량 경매 정보를 확인할 수 있습니다.
             </div>
