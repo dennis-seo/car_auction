@@ -25,6 +25,10 @@ export interface VehicleData {
     purpose?: string;
     fuel?: string;
     auction_name?: string;
+}
+
+/** 인덱스 시그니처를 포함한 VehicleData (내부 사용) */
+interface VehicleDataWithIndex extends VehicleData {
     [key: string]: unknown;
 }
 
@@ -177,7 +181,8 @@ export const calculateGroupCounts = (
 
     // 데이터 순회하며 개수 계산
     data.forEach(row => {
-        const value = row?.[fieldName];
+        const rowWithIndex = row as VehicleDataWithIndex;
+        const value = rowWithIndex?.[fieldName];
         if (!value || typeof value !== 'string') return;
 
         const groupLabel = findGroupLabel(value, groups);

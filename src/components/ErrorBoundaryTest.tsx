@@ -4,8 +4,8 @@ import React, { useState } from 'react';
  * ErrorBoundary 테스트 컴포넌트
  * 개발 모드에서만 표시되며, 의도적으로 에러를 발생시켜 ErrorBoundary를 테스트할 수 있음
  */
-const ErrorBoundaryTest = () => {
-    const [shouldThrow, setShouldThrow] = useState(false);
+const ErrorBoundaryTest: React.FC = () => {
+    const [shouldThrow, setShouldThrow] = useState<boolean>(false);
 
     if (process.env.NODE_ENV !== 'development') {
         return null;

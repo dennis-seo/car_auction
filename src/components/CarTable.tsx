@@ -1,12 +1,53 @@
 import React, { useMemo } from 'react';
 import { useFilteredData } from '../hooks/useFilteredData';
 import { columnMapping, mileageRanges, priceRanges } from '../utils/appState';
-import TableHeaderFilter from './TableHeaderFilter.jsx';
+import TableHeaderFilter from './TableHeaderFilter';
+import type { AuctionItem, ActiveFilters, FilterIds, BudgetRange, SortFilterType, FilterAction } from '../types';
+
+/** 연식 범위 타입 */
+type YearRange = [number, number] | null;
+
+/** 테이블 필터 옵션 타입 */
+interface TableFilters {
+    fuel?: string[];
+    vehicleType?: string[];
+    title?: string[];
+    auction_name?: string[];
+    region?: string[];
+    km?: string[];
+    price?: string[];
+}
+
+/** CarTable Props */
+interface CarTableProps {
+    /** 차량 데이터 */
+    data: AuctionItem[];
+    /** 활성화된 필터 */
+    activeFilters: ActiveFilters;
+    /** ID 기반 필터 */
+    filterIds?: FilterIds | null;
+    /** 검색 쿼리 */
+    searchQuery?: string;
+    /** 예산 범위 */
+    budgetRange?: BudgetRange | null;
+    /** 연식 범위 */
+    yearRange?: YearRange;
+    /** 마지막 정렬 필터 */
+    lastSortedFilter?: SortFilterType;
+    /** 이미지 클릭 콜백 */
+    onImageClick: (imageUrl: string) => void;
+    /** 상세보기 클릭 콜백 */
+    onDetailsClick: (row: AuctionItem) => void;
+    /** 필터 업데이트 콜백 */
+    onUpdateFilter: (filterType: string, value: string | string[], action?: FilterAction) => void;
+    /** 테이블 표시 여부 */
+    showTable: boolean;
+}
 
 /**
  * 차량 테이블 컴포넌트
  */
-const CarTable = ({
+const CarTable: React.FC<CarTableProps> = ({
     data,
     activeFilters,
     filterIds,
@@ -23,26 +64,26 @@ const CarTable = ({
     const filteredData = useFilteredData(
         data,
         activeFilters,
-        searchQuery,
-        budgetRange,
-        yearRange,
-        lastSortedFilter,
-        filterIds
+        searchQuery ?? '',
+        budgetRange ?? null,
+        yearRange ?? null,
+        lastSortedFilter ?? null,
+        filterIds ?? null
     );
 
     // 테이블 필터 옵션을 useMemo로 최적화
-    const tableFilters = useMemo(() => {
+    const tableFilters = useMemo((): TableFilters => {
         if (!data || data.length === 0) return {};
 
         return {
             fuel: [...new Set(data.map(row => row.fuel).filter(Boolean))].sort(),
             vehicleType: [...new Set(data.map(row =>
                 row.vehicleType || row.usage || row.type || row.purpose || row.fuel
-            ).filter(Boolean))].sort(),
+            ).filter((v): v is string => Boolean(v)))].sort(),
             title: [...new Set(data.map(row => {
                 const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
                 return match ? match[1] : null;
-            }).filter(Boolean))].sort(),
+            }).filter((v): v is string => Boolean(v)))].sort(),
             auction_name: [...new Set(data.map(row => row.auction_name).filter(Boolean))].sort(),
             region: [...new Set(data.map(row => row.region).filter(Boolean))].sort(),
             km: Object.keys(mileageRanges),
@@ -50,7 +91,7 @@ const CarTable = ({
         };
     }, [data]);
 
-    const handleCellClick = (e, row, columnKey) => {
+    const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, row: AuctionItem, columnKey: string): void => {
         if (columnKey === 'title' && row.image) {
             onImageClick(row.image);
         } else if (columnKey === 'sell_number') {
@@ -58,7 +99,7 @@ const CarTable = ({
         }
     };
 
-    const renderTableHeader = () => {
+    const renderTableHeader = (): React.ReactNode => {
         return (
             <tr>
                 {Object.keys(columnMapping).map(key => (
@@ -66,7 +107,7 @@ const CarTable = ({
                         key={key}
                         columnKey={key}
                         columnName={columnMapping[key]}
-                        options={tableFilters[key]}
+                        options={tableFilters[key as keyof TableFilters]}
                         activeFilters={activeFilters}
                         onUpdateFilter={onUpdateFilter}
                         isFilterable={["fuel", "vehicleType", "title", "km", "price", "year", "auction_name", "region"].includes(key)}
@@ -76,11 +117,12 @@ const CarTable = ({
         );
     };
 
-    const renderTableRow = (row, index) => {
+    const renderTableRow = (row: AuctionItem, index: number): React.ReactNode => {
         return (
             <tr key={`${row.sell_number}-${index}`}>
                 {Object.keys(columnMapping).map(key => {
-                    let content = row[key] || '-';
+                    const rowValue = row[key as keyof AuctionItem];
+                    let content: React.ReactNode = rowValue !== undefined && rowValue !== null ? String(rowValue) : '-';
                     let className = '';
                     let isClickable = false;
 
@@ -98,8 +140,8 @@ const CarTable = ({
                                 </div>
                             </td>
                         );
-                    } else if (key === 'km' && !isNaN(parseInt(row.km, 10))) {
-                        content = `${parseInt(row.km, 10).toLocaleString('ko-KR')} km`;
+                    } else if (key === 'km' && row.km && !isNaN(parseInt(String(row.km), 10))) {
+                        content = `${parseInt(String(row.km), 10).toLocaleString('ko-KR')} km`;
                     } else if (key === 'title' && row.image) {
                         className = 'title-clickable';
                         isClickable = true;
@@ -144,11 +186,11 @@ const CarTable = ({
                 <tbody>
                     {filteredData.length === 0 ? (
                         <tr>
-                            <td 
+                            <td
                                 colSpan={Object.keys(columnMapping).length}
-                                style={{ 
-                                    padding: '2rem', 
-                                    textAlign: 'center' 
+                                style={{
+                                    padding: '2rem',
+                                    textAlign: 'center'
                                 }}
                             >
                                 검색 결과가 없습니다. 다른 필터 조건을 선택해주세요.

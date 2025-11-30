@@ -10,12 +10,68 @@ import {
     ReferenceLine,
 } from 'recharts';
 import { useVehicleHistory } from '../hooks/useVehicleHistory';
+import type { AuctionItem } from '../types';
+
+/** 차량 정보 타입 */
+interface VehicleInfo {
+    manufacturerId: string | undefined;
+    manufacturerName: string | undefined;
+    modelId: string | undefined;
+    modelName: string | undefined;
+    trimId: string | undefined;
+    trimName: string | undefined;
+    currentPrice: number | undefined;
+}
+
+/** 차트 데이터 타입 */
+interface ChartDataItem {
+    date: string;
+    price: number;
+    displayDate: string;
+    km: number | null;
+    year: number | undefined;
+    score: string | undefined;
+}
+
+/** 통계 타입 */
+interface Stats {
+    min: number;
+    max: number;
+    avg: number;
+    current: number | null;
+    count: number;
+}
+
+/** 툴팁 Props */
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: ChartDataItem }>;
+    label?: string;
+}
+
+/** PriceChart Props */
+interface PriceChartProps {
+    /** 현재 차량 데이터 */
+    vehicleData: AuctionItem | null;
+    /** 현재 경매 날짜 (YYYY-MM-DD 형식) */
+    currentAuctionDate: string | null;
+}
+
+// 날짜 포맷팅
+function formatShortDate(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        return `${parts[1]}/${parts[2]}`;
+    }
+    return dateStr;
+}
 
 /**
  * 시세 변동 그래프 컴포넌트
  * 동일 모델의 과거 경매 가격 추이를 차트로 표시
  */
-const PriceChart = ({ vehicleData, currentAuctionDate }) => {
+const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate }) => {
     const {
         history,
         loading,
@@ -26,17 +82,24 @@ const PriceChart = ({ vehicleData, currentAuctionDate }) => {
     } = useVehicleHistory();
 
     // 차량 정보 추출
-    const vehicleInfo = useMemo(() => {
+    const vehicleInfo = useMemo((): VehicleInfo | null => {
         if (!vehicleData) return null;
 
+        // vehicleData에서 manufacturer, model 등의 필드는 직접 존재하지 않을 수 있음
+        const data = vehicleData as AuctionItem & {
+            manufacturer?: string;
+            model?: string;
+            trim?: string;
+        };
+
         return {
-            manufacturerId: vehicleData.manufacturer_id,
-            manufacturerName: vehicleData.manufacturer,
-            modelId: vehicleData.model_id,
-            modelName: vehicleData.model,
-            trimId: vehicleData.trim_id,
-            trimName: vehicleData.trim,
-            currentPrice: vehicleData.price,
+            manufacturerId: data.manufacturer_id,
+            manufacturerName: data.manufacturer,
+            modelId: data.model_id,
+            modelName: data.model,
+            trimId: data.trim_id,
+            trimName: data.trim,
+            currentPrice: data.price,
         };
     }, [vehicleData]);
 
@@ -48,59 +111,49 @@ const PriceChart = ({ vehicleData, currentAuctionDate }) => {
                 modelId: vehicleInfo.modelId,
                 limit: 50,
                 offset: 0,
-                excludeDate: currentAuctionDate,
+                excludeDate: currentAuctionDate || undefined,
             });
         }
         return () => resetHistory();
     }, [vehicleInfo, currentAuctionDate, fetchHistory, resetHistory]);
 
     // 차트 데이터 변환 (날짜순 정렬)
-    const chartData = useMemo(() => {
+    const chartData = useMemo((): ChartDataItem[] => {
         if (!history || history.length === 0) return [];
 
         return history
-            .filter(item => item.price && !isNaN(parseInt(item.price, 10)))
+            .filter(item => item.price && !isNaN(parseInt(String(item.price), 10)))
             .map(item => ({
-                date: item.auction_date,
-                price: parseInt(item.price, 10),
+                date: item.auction_date || '',
+                price: parseInt(String(item.price), 10),
                 displayDate: formatShortDate(item.auction_date),
-                km: item.km ? parseInt(item.km, 10) : null,
+                km: item.km ? parseInt(String(item.km), 10) : null,
                 year: item.year,
                 score: item.score,
             }))
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [history]);
 
     // 통계 계산
-    const stats = useMemo(() => {
+    const stats = useMemo((): Stats | null => {
         if (chartData.length === 0) return null;
 
         const prices = chartData.map(d => d.price);
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         const avg = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
-        const current = vehicleInfo?.currentPrice ? parseInt(vehicleInfo.currentPrice, 10) : null;
+        const current = vehicleInfo?.currentPrice ? parseInt(String(vehicleInfo.currentPrice), 10) : null;
 
         return { min, max, avg, current, count: prices.length };
     }, [chartData, vehicleInfo?.currentPrice]);
 
-    // 날짜 포맷팅
-    function formatShortDate(dateStr) {
-        if (!dateStr) return '';
-        const parts = dateStr.split('-');
-        if (parts.length === 3) {
-            return `${parts[1]}/${parts[2]}`;
-        }
-        return dateStr;
-    }
-
     // 가격 포맷팅
-    const formatPrice = (value) => {
+    const formatPrice = (value: number): string => {
         return `${value.toLocaleString('ko-KR')}만`;
     };
 
     // 커스텀 툴팁
-    const CustomTooltip = ({ active, payload, label }) => {
+    const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             return (

@@ -1,12 +1,31 @@
 import React, { useEffect, useMemo } from 'react';
 import { useVehicleHistory } from '../hooks/useVehicleHistory';
+import type { AuctionItem } from '../types';
+
+/** 차량 정보 타입 */
+interface VehicleInfo {
+    manufacturerId: string | undefined;
+    manufacturerName: string | undefined;
+    modelId: string | undefined;
+    modelName: string | undefined;
+    trimId: string | undefined;
+    trimName: string | undefined;
+}
+
+/** VehicleHistory Props */
+interface VehicleHistoryProps {
+    /** 현재 차량 데이터 */
+    vehicleData: AuctionItem | null;
+    /** 현재 경매 날짜 (YYYY-MM-DD 형식) */
+    currentAuctionDate: string | null;
+}
 
 /**
  * 차량 히스토리 컴포넌트
  * 동일 모델의 과거 경매 기록을 표시
  * API 응답의 manufacturer_id, model_id 기준으로 검색
  */
-const VehicleHistory = ({ vehicleData, currentAuctionDate }) => {
+const VehicleHistory: React.FC<VehicleHistoryProps> = ({ vehicleData, currentAuctionDate }) => {
     const {
         history,
         loading,
@@ -18,26 +37,34 @@ const VehicleHistory = ({ vehicleData, currentAuctionDate }) => {
     } = useVehicleHistory();
 
     // 차량 정보 추출 (API 응답에서 직접 사용)
-    const vehicleInfo = useMemo(() => {
+    const vehicleInfo = useMemo((): VehicleInfo | null => {
         if (!vehicleData) return null;
 
+        // vehicleData에서 manufacturer, model 등의 필드는 직접 존재하지 않을 수 있음
+        // API에서 오는 데이터 구조에 맞게 타입 assertion 사용
+        const data = vehicleData as AuctionItem & {
+            manufacturer?: string;
+            model?: string;
+            trim?: string;
+        };
+
         return {
-            manufacturerId: vehicleData.manufacturer_id,
-            manufacturerName: vehicleData.manufacturer,
-            modelId: vehicleData.model_id,
-            modelName: vehicleData.model,
-            trimId: vehicleData.trim_id,
-            trimName: vehicleData.trim,
+            manufacturerId: data.manufacturer_id,
+            manufacturerName: data.manufacturer,
+            modelId: data.model_id,
+            modelName: data.model,
+            trimId: data.trim_id,
+            trimName: data.trim,
         };
     }, [vehicleData]);
 
     // 현재 페이지 계산
-    const currentPage = useMemo(() => {
+    const currentPage = useMemo((): number => {
         return Math.floor(pagination.offset / pagination.limit) + 1;
     }, [pagination.offset, pagination.limit]);
 
     // 총 페이지 수
-    const totalPages = useMemo(() => {
+    const totalPages = useMemo((): number => {
         return Math.ceil(pagination.total / pagination.limit);
     }, [pagination.total, pagination.limit]);
 
@@ -61,31 +88,31 @@ const VehicleHistory = ({ vehicleData, currentAuctionDate }) => {
                 // trimId: vehicleInfo.trimId,
                 limit: 10,
                 offset: 0,
-                excludeDate: currentAuctionDate,
+                excludeDate: currentAuctionDate || undefined,
             });
         }
         return () => resetHistory();
     }, [vehicleInfo, vehicleData?.title, currentAuctionDate, fetchHistory, resetHistory]);
 
     // 페이지 변경 핸들러
-    const handlePageChange = (page) => {
+    const handlePageChange = (page: number): void => {
         if (!vehicleInfo?.modelId) return;
 
         goToPage(page, {
             manufacturerId: vehicleInfo.manufacturerId,
             modelId: vehicleInfo.modelId,
-            excludeDate: currentAuctionDate,
+            excludeDate: currentAuctionDate || undefined,
         });
     };
 
     // 숫자 포맷팅
-    const formatNumber = (num) => {
-        if (!num || isNaN(parseInt(num, 10))) return '-';
-        return parseInt(num, 10).toLocaleString('ko-KR');
+    const formatNumber = (num: number | string | undefined): string => {
+        if (!num || isNaN(parseInt(String(num), 10))) return '-';
+        return parseInt(String(num), 10).toLocaleString('ko-KR');
     };
 
     // 날짜 포맷팅 (YYYY-MM-DD -> YY.MM.DD)
-    const formatDate = (dateStr) => {
+    const formatDate = (dateStr: string | undefined): string => {
         if (!dateStr) return '-';
         const parts = dateStr.split('-');
         if (parts.length === 3) {
@@ -151,38 +178,42 @@ const VehicleHistory = ({ vehicleData, currentAuctionDate }) => {
             </div>
 
             <div className="vehicle-history-list">
-                {history.map((item, index) => (
-                    <div key={`${item.auction_date}-${item.sell_number}-${index}`} className="history-item">
-                        <div className="history-item-date">
-                            <span className="date-value">{formatDate(item.auction_date)}</span>
-                            {item.auction_house && (
-                                <span className="auction-house">{item.auction_house}</span>
-                            )}
-                        </div>
-                        <div className="history-item-details">
-                            <div className="history-detail-row">
-                                <span className="detail-label">가격</span>
-                                <span className="detail-value price">{formatNumber(item.price)}만원</span>
+                {history.map((item, index) => {
+                    // auction_house 필드 타입 처리
+                    const itemWithHouse = item as AuctionItem & { auction_house?: string };
+                    return (
+                        <div key={`${item.auction_date}-${item.sell_number}-${index}`} className="history-item">
+                            <div className="history-item-date">
+                                <span className="date-value">{formatDate(item.auction_date)}</span>
+                                {itemWithHouse.auction_house && (
+                                    <span className="auction-house">{itemWithHouse.auction_house}</span>
+                                )}
                             </div>
-                            <div className="history-detail-row">
-                                <span className="detail-label">주행</span>
-                                <span className="detail-value">{formatNumber(item.km)}km</span>
+                            <div className="history-item-details">
+                                <div className="history-detail-row">
+                                    <span className="detail-label">가격</span>
+                                    <span className="detail-value price">{formatNumber(item.price)}만원</span>
+                                </div>
+                                <div className="history-detail-row">
+                                    <span className="detail-label">주행</span>
+                                    <span className="detail-value">{formatNumber(item.km)}km</span>
+                                </div>
+                                {item.year && (
+                                    <div className="history-detail-row">
+                                        <span className="detail-label">연식</span>
+                                        <span className="detail-value">{item.year}년</span>
+                                    </div>
+                                )}
+                                {item.score && (
+                                    <div className="history-detail-row">
+                                        <span className="detail-label">등급</span>
+                                        <span className="detail-value score">{item.score}</span>
+                                    </div>
+                                )}
                             </div>
-                            {item.year && (
-                                <div className="history-detail-row">
-                                    <span className="detail-label">연식</span>
-                                    <span className="detail-value">{item.year}년</span>
-                                </div>
-                            )}
-                            {item.score && (
-                                <div className="history-detail-row">
-                                    <span className="detail-label">등급</span>
-                                    <span className="detail-value score">{item.score}</span>
-                                </div>
-                            )}
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* 페이지네이션 */}

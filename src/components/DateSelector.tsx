@@ -1,21 +1,40 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import PropTypes from 'prop-types';
 import { formatYYMMDDToLabel } from '../utils/dataUtils';
+
+/** DateSelector Props */
+interface DateSelectorProps {
+    /** 선택 가능한 날짜 목록 (yymmdd 형식) */
+    availableDates?: string[];
+    /** 현재 선택된 날짜 */
+    selectedDate?: string;
+    /** 날짜 변경 핸들러 */
+    onDateChange: (date: string) => void;
+    /** 컴포넌트 비활성화 여부 */
+    disabled?: boolean;
+    /** 로딩 상태 여부 */
+    loading?: boolean;
+}
 
 /**
  * 경매 날짜 선택 컴포넌트
  * 사용 가능한 날짜 목록에서 날짜를 선택할 수 있는 커스텀 드롭다운을 제공합니다.
  */
-const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disabled = false, loading = false }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
+const DateSelector: React.FC<DateSelectorProps> = memo(({
+    availableDates = [],
+    selectedDate = '',
+    onDateChange,
+    disabled = false,
+    loading = false
+}) => {
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const handleSelect = (value) => {
+    const handleSelect = (value: string): void => {
         onDateChange(value);
         setIsOpen(false);
     };
 
-    const toggleDropdown = () => {
+    const toggleDropdown = (): void => {
         if (!disabled && !loading) {
             setIsOpen(!isOpen);
         }
@@ -23,8 +42,8 @@ const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disable
 
     // 외부 클릭 시 드롭다운 닫기
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent): void => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -35,7 +54,7 @@ const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disable
 
     // ESC 키로 닫기
     useEffect(() => {
-        const handleEsc = (event) => {
+        const handleEsc = (event: KeyboardEvent): void => {
             if (event.key === 'Escape') {
                 setIsOpen(false);
             }
@@ -56,8 +75,8 @@ const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disable
         return (
             <div id="date-selector-container" className="date-selector-error">
                 <label htmlFor="date-selector">경매 날짜 선택:</label>
-                <select 
-                    id="date-selector" 
+                <select
+                    id="date-selector"
                     disabled
                     aria-describedby="date-selector-error"
                 >
@@ -75,8 +94,8 @@ const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disable
         return (
             <div id="date-selector-container" className="date-selector-empty">
                 <label htmlFor="date-selector">경매 날짜 선택:</label>
-                <select 
-                    id="date-selector" 
+                <select
+                    id="date-selector"
                     disabled
                     aria-describedby="date-selector-empty"
                 >
@@ -145,27 +164,5 @@ const DateSelector = memo(({ availableDates, selectedDate, onDateChange, disable
 
 // 컴포넌트 이름 설정 (개발 도구에서 표시)
 DateSelector.displayName = 'DateSelector';
-
-// PropTypes 정의
-DateSelector.propTypes = {
-    /** 선택 가능한 날짜 목록 (yymmdd 형식) */
-    availableDates: PropTypes.arrayOf(PropTypes.string),
-    /** 현재 선택된 날짜 */
-    selectedDate: PropTypes.string,
-    /** 날짜 변경 핸들러 */
-    onDateChange: PropTypes.func.isRequired,
-    /** 컴포넌트 비활성화 여부 */
-    disabled: PropTypes.bool,
-    /** 로딩 상태 여부 */
-    loading: PropTypes.bool
-};
-
-// 기본값 설정
-DateSelector.defaultProps = {
-    availableDates: [],
-    selectedDate: '',
-    disabled: false,
-    loading: false
-};
 
 export default DateSelector;

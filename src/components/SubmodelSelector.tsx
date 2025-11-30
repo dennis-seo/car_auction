@@ -1,15 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { loadSearchTree } from '../utils/dataUtils';
+import type { ActiveFilters, FilterIds, SearchTree, TrimInfo, FilterAction } from '../types';
+
+/** 필터 라벨 정보 */
+interface FilterLabels {
+    manufacturer: string | null;
+    model: string | null;
+    trim: string | null;
+}
+
+/** SubmodelSelector Props */
+interface SubmodelSelectorProps {
+    /** 활성화된 필터 */
+    activeFilters: ActiveFilters;
+    /** 필터 업데이트 콜백 */
+    onUpdateFilter: (filterType: string, value: string[], action?: FilterAction) => void;
+    /** ID 기반 필터 */
+    filterIds?: FilterIds | null;
+    /** ID 기반 필터 변경 콜백 */
+    onFilterIdChange?: (filterIds: FilterIds, labels: FilterLabels) => void;
+}
 
 /**
  * 세부모델 선택 컴포넌트
  * ID 기반 필터링을 위해 onFilterIdChange 콜백 지원
  */
-const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTree, setSearchTree] = useState(null);
-    const dropdownRef = useRef(null);
-    const boxRef = useRef(null);
+const SubmodelSelector: React.FC<SubmodelSelectorProps> = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdChange }) => {
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const [searchTree, setSearchTree] = useState<SearchTree | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const boxRef = useRef<HTMLDivElement>(null);
 
     const currentBrand = (activeFilters.title || [])[0] || null;
     const currentModel = (activeFilters.model || [])[0] || null;
@@ -17,7 +37,7 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
 
     useEffect(() => {
         // 검색 트리 데이터 로드
-        const loadData = async () => {
+        const loadData = async (): Promise<void> => {
             const tree = await loadSearchTree();
             setSearchTree(tree);
         };
@@ -26,8 +46,8 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
 
     useEffect(() => {
         // 외부 클릭 시 드롭다운 닫기
-        const handleClickOutside = (event) => {
-            if (boxRef.current && !boxRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent): void => {
+            if (boxRef.current && !boxRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -41,13 +61,13 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
         };
     }, [isOpen]);
 
-    const handleToggle = (e) => {
+    const handleToggle = (e: React.MouseEvent<HTMLDivElement>): void => {
         e.stopPropagation();
         if (!currentBrand || !currentModel) return; // 브랜드와 모델이 선택되지 않으면 열 수 없음
         setIsOpen(!isOpen);
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             if (currentBrand && currentModel) {
@@ -56,8 +76,8 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
         }
     };
 
-    const handleSubmodelSelect = (submodel) => {
-        const submodelLabel = submodel?.trim || submodel?.label || null;
+    const handleSubmodelSelect = (submodel: TrimInfo | null): void => {
+        const submodelLabel = submodel?.label || null;
         const trimId = submodel?.id || null;
 
         onUpdateFilter('submodel', submodelLabel ? [submodelLabel] : [], 'set');
@@ -81,7 +101,7 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
         setIsOpen(false);
     };
 
-    const getAvailableSubmodels = () => {
+    const getAvailableSubmodels = (): TrimInfo[] => {
         if (!searchTree || !currentBrand || !currentModel) return [];
 
         // 국산과 수입 브랜드 모두에서 검색
@@ -91,19 +111,19 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
         ];
 
         const brand = allBrands.find(b => b.label === currentBrand);
-        const model = brand?.models?.find(m => (m.model || m.label) === currentModel);
-        // trims 또는 submodels 둘 다 지원
-        return model?.trims || model?.submodels || [];
+        const model = brand?.models?.find(m => m.label === currentModel);
+        // trims 지원
+        return model?.trims || [];
     };
 
-    const renderSubmodelOptions = () => {
+    const renderSubmodelOptions = (): React.ReactNode => {
         const submodels = getAvailableSubmodels();
-        
+
         if (submodels.length === 0) {
             return (
                 <div style={{ padding: '14px 16px', color: '#8a94a6' }}>
-                    {currentBrand && currentModel 
-                        ? '사용 가능한 세부모델이 없습니다.' 
+                    {currentBrand && currentModel
+                        ? '사용 가능한 세부모델이 없습니다.'
                         : '브랜드와 모델을 먼저 선택해주세요.'
                     }
                 </div>
@@ -111,7 +131,7 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
         }
 
         return submodels.map(submodel => {
-            const submodelLabel = submodel.trim || submodel.label;
+            const submodelLabel = submodel.label;
             return (
                 <div
                     key={submodelLabel}
@@ -134,7 +154,7 @@ const SubmodelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterId
             className={`car-select-box${isDisabled ? ' disabled' : ''}`}
             id="submodel-select"
             role="button"
-            tabIndex="0"
+            tabIndex={0}
             aria-haspopup="listbox"
             aria-expanded={isOpen}
             aria-disabled={isDisabled}

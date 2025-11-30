@@ -1,17 +1,51 @@
 import React from 'react';
-import { 
-  FUEL_GROUPS, 
-  ALL_FUEL_VARIANTS, 
-  VEHICLE_TYPE_GROUPS, 
-  ALL_VEHICLE_TYPE_VARIANTS,
-  getFilterMode 
+import {
+    FUEL_GROUPS,
+    ALL_FUEL_VARIANTS,
+    VEHICLE_TYPE_GROUPS,
+    ALL_VEHICLE_TYPE_VARIANTS,
+    getFilterMode
 } from '../utils/fuelGroups';
+import type { AuctionItem, ActiveFilters as ActiveFiltersType, FilterAction } from '../types';
+import type { BudgetRange } from './BudgetSlider';
+
+/** 필터 라벨 맵 타입 */
+type FilterLabels = Record<string, string>;
+
+/** ActiveFilters Props */
+interface ActiveFiltersProps {
+    /** 활성화된 필터 */
+    activeFilters: ActiveFiltersType;
+    /** 예산 범위 */
+    budgetRange: BudgetRange | null;
+    /** 검색어 */
+    searchQuery: string;
+    /** 차량 데이터 배열 */
+    data: AuctionItem[];
+    /** 필터 제거 콜백 */
+    onRemoveFilter: (filterType: string, value: string | string[], action?: FilterAction) => void;
+    /** 예산 범위 제거 콜백 */
+    onRemoveBudgetRange: () => void;
+    /** 검색어 제거 콜백 */
+    onRemoveSearchQuery: () => void;
+}
+
+/** 필터 그룹 타입 */
+type FilterGroups = Record<string, readonly string[]>;
 
 /**
  * 활성화된 필터 표시 컴포넌트
  */
-const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, data, onRemoveFilter, onRemoveBudgetRange, onRemoveSearchQuery }) => {
-    const FILTER_LABELS = {
+const ActiveFilters: React.FC<ActiveFiltersProps> = ({
+    activeFilters,
+    budgetRange,
+    searchQuery,
+    data,
+    onRemoveFilter,
+    onRemoveBudgetRange,
+    onRemoveSearchQuery
+}) => {
+    const FILTER_LABELS: FilterLabels = {
         title: '차종',
         model: '모델',
         submodel: '세부모델',
@@ -26,17 +60,23 @@ const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, data, onRemove
     // 현재 데이터에 따라 필터 모드 결정
     const filterMode = getFilterMode(data);
 
-    const handleRemoveFilterValue = (filterType, value) => {
+    const handleRemoveFilterValue = (filterType: string, value: string): void => {
         onRemoveFilter(filterType, value, 'toggle'); // toggle로 해당 값 제거
     };
 
-    const handleRemoveYear = () => {
+    const handleRemoveYear = (): void => {
         onRemoveFilter('year', [], 'clear');
     };
 
     // 그룹화된 필터 처리 함수
-    const processGroupedFilter = (key, values, groups, allVariants, labelKey) => {
-        const pills = [];
+    const processGroupedFilter = (
+        key: string,
+        values: string[],
+        groups: FilterGroups,
+        allVariants: readonly string[],
+        labelKey: string
+    ): React.ReactNode[] => {
+        const pills: React.ReactNode[] = [];
         const remaining = new Set(values);
 
         // 1) 정의된 각 그룹이 모두 활성화된 경우, 그룹 라벨 1개로 묶어서 표시
@@ -108,8 +148,8 @@ const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, data, onRemove
         return pills;
     };
 
-    const renderFilterPills = () => {
-        const pills = [];
+    const renderFilterPills = (): React.ReactNode[] => {
+        const pills: React.ReactNode[] = [];
 
         // 검색어 필터 (맨 앞에 표시)
         if (searchQuery && searchQuery.trim() !== '') {
@@ -149,7 +189,7 @@ const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, data, onRemove
         }
 
         // 나머지 필터들
-        Object.keys(activeFilters).forEach(key => {
+        (Object.keys(activeFilters) as Array<keyof ActiveFiltersType>).forEach(key => {
             if (key === 'year') return; // 연식은 위에서 처리
 
             const values = activeFilters[key] || [];
@@ -158,16 +198,16 @@ const ActiveFilters = ({ activeFilters, budgetRange, searchQuery, data, onRemove
             // 현재 필터 모드에 따른 처리
             if (filterMode === 'vehicleType' && key === 'vehicleType') {
                 // 오토허브: 차량 용도 필터 그룹화
-                pills.push(...processGroupedFilter(key, values, VEHICLE_TYPE_GROUPS, ALL_VEHICLE_TYPE_VARIANTS, key));
+                pills.push(...processGroupedFilter(key, values as string[], VEHICLE_TYPE_GROUPS, ALL_VEHICLE_TYPE_VARIANTS, key));
                 return;
             } else if (filterMode === 'fuel' && key === 'fuel') {
                 // 기타 경매장: 연료 필터 그룹화
-                pills.push(...processGroupedFilter(key, values, FUEL_GROUPS, ALL_FUEL_VARIANTS, key));
+                pills.push(...processGroupedFilter(key, values as string[], FUEL_GROUPS, ALL_FUEL_VARIANTS, key));
                 return;
             }
 
             // 기본: 각 값마다 알약 생성
-            values.forEach(val => {
+            (values as string[]).forEach(val => {
                 pills.push(
                     <span key={`${key}-${val}`} className="filter-pill">
                         <span className="filter-pill-label">{FILTER_LABELS[key]}</span>

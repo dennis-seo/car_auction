@@ -1,21 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { loadSearchTree } from '../utils/dataUtils';
+import type { ActiveFilters, FilterIds, SearchTree, BrandInfo, FilterAction } from '../types';
+
+/** 필터 라벨 정보 */
+interface FilterLabels {
+    manufacturer: string | null;
+    model: string | null;
+    trim: string | null;
+}
+
+/** BrandSelector Props */
+interface BrandSelectorProps {
+    /** 활성화된 필터 */
+    activeFilters: ActiveFilters;
+    /** 필터 업데이트 콜백 */
+    onUpdateFilter: (filterType: string, value: string[], action?: FilterAction) => void;
+    /** ID 기반 필터 변경 콜백 */
+    onFilterIdChange?: (filterIds: FilterIds, labels: FilterLabels) => void;
+}
 
 /**
  * 브랜드 선택 컴포넌트
  * ID 기반 필터링을 위해 onFilterIdChange 콜백 지원
  */
-const BrandSelector = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTree, setSearchTree] = useState(null);
-    const dropdownRef = useRef(null);
-    const boxRef = useRef(null);
+const BrandSelector: React.FC<BrandSelectorProps> = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const [searchTree, setSearchTree] = useState<SearchTree | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const boxRef = useRef<HTMLDivElement>(null);
 
     const currentBrand = (activeFilters.title || [])[0] || null;
 
     useEffect(() => {
         // 검색 트리 데이터 로드
-        const loadData = async () => {
+        const loadData = async (): Promise<void> => {
             const tree = await loadSearchTree();
             setSearchTree(tree);
         };
@@ -24,8 +42,8 @@ const BrandSelector = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
 
     useEffect(() => {
         // 외부 클릭 시 드롭다운 닫기
-        const handleClickOutside = (event) => {
-            if (boxRef.current && !boxRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent): void => {
+            if (boxRef.current && !boxRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -39,19 +57,19 @@ const BrandSelector = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
         };
     }, [isOpen]);
 
-    const handleToggle = (e) => {
+    const handleToggle = (e: React.MouseEvent<HTMLDivElement>): void => {
         e.stopPropagation();
         setIsOpen(!isOpen);
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setIsOpen(!isOpen);
         }
     };
 
-    const handleBrandSelect = (brand) => {
+    const handleBrandSelect = (brand: BrandInfo | null): void => {
         const brandLabel = brand?.label || null;
         const brandId = brand?.id || null;
 
@@ -79,7 +97,7 @@ const BrandSelector = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
         setIsOpen(false);
     };
 
-    const renderBrandOptions = () => {
+    const renderBrandOptions = (): React.ReactNode => {
         if (!searchTree || (!searchTree.domestic && !searchTree.import)) {
             return (
                 <div style={{ padding: '14px 16px', color: '#8a94a6' }}>
@@ -124,7 +142,7 @@ const BrandSelector = ({ activeFilters, onUpdateFilter, onFilterIdChange }) => {
             className="car-select-box"
             id="brand-select"
             role="button"
-            tabIndex="0"
+            tabIndex={0}
             aria-haspopup="listbox"
             aria-expanded={isOpen}
             onClick={handleToggle}

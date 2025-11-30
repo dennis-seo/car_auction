@@ -1,22 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { loadSearchTree } from '../utils/dataUtils';
+import type { ActiveFilters, FilterIds, SearchTree, ModelInfo, FilterAction } from '../types';
+
+/** 필터 라벨 정보 */
+interface FilterLabels {
+    manufacturer: string | null;
+    model: string | null;
+    trim: string | null;
+}
+
+/** ModelSelector Props */
+interface ModelSelectorProps {
+    /** 활성화된 필터 */
+    activeFilters: ActiveFilters;
+    /** 필터 업데이트 콜백 */
+    onUpdateFilter: (filterType: string, value: string[], action?: FilterAction) => void;
+    /** ID 기반 필터 */
+    filterIds?: FilterIds | null;
+    /** ID 기반 필터 변경 콜백 */
+    onFilterIdChange?: (filterIds: FilterIds, labels: FilterLabels) => void;
+}
 
 /**
  * 모델 선택 컴포넌트
  * ID 기반 필터링을 위해 onFilterIdChange 콜백 지원
  */
-const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTree, setSearchTree] = useState(null);
-    const dropdownRef = useRef(null);
-    const boxRef = useRef(null);
+const ModelSelector: React.FC<ModelSelectorProps> = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdChange }) => {
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const [searchTree, setSearchTree] = useState<SearchTree | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const boxRef = useRef<HTMLDivElement>(null);
 
     const currentBrand = (activeFilters.title || [])[0] || null;
     const currentModel = (activeFilters.model || [])[0] || null;
 
     useEffect(() => {
         // 검색 트리 데이터 로드
-        const loadData = async () => {
+        const loadData = async (): Promise<void> => {
             const tree = await loadSearchTree();
             setSearchTree(tree);
         };
@@ -25,8 +45,8 @@ const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdCha
 
     useEffect(() => {
         // 외부 클릭 시 드롭다운 닫기
-        const handleClickOutside = (event) => {
-            if (boxRef.current && !boxRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent): void => {
+            if (boxRef.current && !boxRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -40,13 +60,13 @@ const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdCha
         };
     }, [isOpen]);
 
-    const handleToggle = (e) => {
+    const handleToggle = (e: React.MouseEvent<HTMLDivElement>): void => {
         e.stopPropagation();
         if (!currentBrand) return; // 브랜드가 선택되지 않으면 열 수 없음
         setIsOpen(!isOpen);
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             if (currentBrand) {
@@ -55,8 +75,8 @@ const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdCha
         }
     };
 
-    const handleModelSelect = (model) => {
-        const modelLabel = model?.model || model?.label || null;
+    const handleModelSelect = (model: ModelInfo | null): void => {
+        const modelLabel = model?.label || null;
         const modelId = model?.id || null;
 
         // 모델 변경 시 세부트림도 초기화
@@ -82,22 +102,22 @@ const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdCha
         setIsOpen(false);
     };
 
-    const getAvailableModels = () => {
+    const getAvailableModels = (): ModelInfo[] => {
         if (!searchTree || !currentBrand) return [];
-        
+
         // 국산과 수입 브랜드 모두에서 검색
         const allBrands = [
             ...(searchTree.domestic || []),
             ...(searchTree.import || [])
         ];
-        
+
         const brand = allBrands.find(b => b.label === currentBrand);
         return brand?.models || [];
     };
 
-    const renderModelOptions = () => {
+    const renderModelOptions = (): React.ReactNode => {
         const models = getAvailableModels();
-        
+
         if (models.length === 0) {
             return (
                 <div style={{ padding: '14px 16px', color: '#8a94a6' }}>
@@ -107,7 +127,7 @@ const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdCha
         }
 
         return models.map(model => {
-            const modelLabel = model.model || model.label;
+            const modelLabel = model.label;
             return (
                 <div
                     key={modelLabel}
@@ -128,7 +148,7 @@ const ModelSelector = ({ activeFilters, onUpdateFilter, filterIds, onFilterIdCha
             className={`car-select-box${!currentBrand ? ' disabled' : ''}`}
             id="model-select"
             role="button"
-            tabIndex="0"
+            tabIndex={0}
             aria-haspopup="listbox"
             aria-expanded={isOpen}
             aria-disabled={!currentBrand}

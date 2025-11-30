@@ -1,25 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { appState } from '../utils/appState';
+import { mileageRanges, priceRanges } from '../utils/appState';
+import type { ActiveFilters, FilterAction } from '../types';
+
+/** TableHeaderFilter Props */
+interface TableHeaderFilterProps {
+    /** 컬럼 키 */
+    columnKey: string;
+    /** 컬럼 이름 (표시용) */
+    columnName: string;
+    /** 필터 옵션 목록 */
+    options?: string[];
+    /** 활성화된 필터 */
+    activeFilters: ActiveFilters;
+    /** 필터 업데이트 콜백 */
+    onUpdateFilter: (filterType: string, value: string | string[], action?: FilterAction) => void;
+    /** 필터링 가능 여부 */
+    isFilterable: boolean;
+}
 
 /**
  * 테이블 헤더 필터 컴포넌트
  */
-const TableHeaderFilter = ({ 
-    columnKey, 
-    columnName, 
-    options, 
-    activeFilters, 
-    onUpdateFilter, 
-    isFilterable 
+const TableHeaderFilter: React.FC<TableHeaderFilterProps> = ({
+    columnKey,
+    columnName,
+    options,
+    activeFilters,
+    onUpdateFilter,
+    isFilterable
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
-    const headerRef = useRef(null);
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const headerRef = useRef<HTMLTableCellElement>(null);
 
     useEffect(() => {
         // 외부 클릭 시 드롭다운 닫기
-        const handleClickOutside = (event) => {
-            if (headerRef.current && !headerRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent): void => {
+            if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -33,14 +50,14 @@ const TableHeaderFilter = ({
         };
     }, [isOpen]);
 
-    const handleToggle = (e) => {
+    const handleToggle = (e: React.MouseEvent<HTMLTableCellElement>): void => {
         e.stopPropagation();
         if (isFilterable) {
             setIsOpen(!isOpen);
         }
     };
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTableCellElement>): void => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             if (isFilterable) {
@@ -49,16 +66,18 @@ const TableHeaderFilter = ({
         }
     };
 
-    const handleFilterSelect = (value) => {
+    const handleFilterSelect = (value: string): void => {
         onUpdateFilter(columnKey, value, 'toggle');
         // 드롭다운을 열어둠 (다중 선택 가능)
     };
 
-    const getActiveFilterValues = () => {
-        return activeFilters[columnKey] || [];
+    const getActiveFilterValues = (): string[] => {
+        const filterKey = columnKey as keyof ActiveFilters;
+        const values = activeFilters[filterKey];
+        return Array.isArray(values) ? (values as string[]) : [];
     };
 
-    const renderFilterOptions = () => {
+    const renderFilterOptions = (): React.ReactNode => {
         if (!options || options.length === 0) {
             return (
                 <div className="filter-option-item disabled">
@@ -71,8 +90,8 @@ const TableHeaderFilter = ({
 
         // km, price 범위 처리
         if (columnKey === 'km' || columnKey === 'price') {
-            const ranges = columnKey === 'km' ? appState.mileageRanges : appState.priceRanges;
-            
+            const ranges = columnKey === 'km' ? mileageRanges : priceRanges;
+
             return Object.keys(ranges).map(rangeKey => {
                 const isActive = activeValues.includes(rangeKey);
                 return (
@@ -86,7 +105,7 @@ const TableHeaderFilter = ({
                         <input
                             type="checkbox"
                             checked={isActive}
-                            onChange={() => {}} // onClick에서 처리
+                            onChange={() => { }} // onClick에서 처리
                             aria-label={`${rangeKey} 필터 ${isActive ? '해제' : '적용'}`}
                         />
                         <span>{rangeKey}</span>
@@ -109,7 +128,7 @@ const TableHeaderFilter = ({
                     <input
                         type="checkbox"
                         checked={isActive}
-                        onChange={() => {}} // onClick에서 처리
+                        onChange={() => { }} // onClick에서 처리
                         aria-label={`${option} 필터 ${isActive ? '해제' : '적용'}`}
                     />
                     <span>{option}</span>
@@ -122,7 +141,7 @@ const TableHeaderFilter = ({
     const hasActiveFilters = activeCount > 0;
 
     return (
-        <th 
+        <th
             ref={headerRef}
             className={`table-header-filter ${isFilterable ? 'filterable' : ''} ${hasActiveFilters ? 'has-active-filters' : ''}`}
             role={isFilterable ? 'button' : undefined}
@@ -140,7 +159,7 @@ const TableHeaderFilter = ({
                     </span>
                 )}
             </div>
-            
+
             {isOpen && isFilterable && (
                 <div className="filter-dropdown" ref={dropdownRef}>
                     <div className="filter-dropdown-header">
@@ -159,9 +178,9 @@ const TableHeaderFilter = ({
                             </button>
                         )}
                     </div>
-                    <div 
-                        className="filter-dropdown-content" 
-                        role="listbox" 
+                    <div
+                        className="filter-dropdown-content"
+                        role="listbox"
                         aria-label={`${columnName} 필터 옵션`}
                     >
                         {renderFilterOptions()}

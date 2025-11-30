@@ -1,15 +1,40 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 import { useFilteredData } from '../hooks/useFilteredData';
 import { useIsMobile } from '../hooks/useIsMobile';
-import CarCardMobile from './CarCardMobile.jsx';
-import CarCardDesktop from './CarCardDesktop.jsx';
+import CarCardMobile from './CarCardMobile';
+import CarCardDesktop from './CarCardDesktop';
+import type { AuctionItem, ActiveFilters, FilterIds, BudgetRange, SortFilterType } from '../types';
+
+/** 연식 범위 타입 */
+type YearRange = [number, number] | null;
+
+/** CarGallery Props */
+interface CarGalleryProps {
+    /** 차량 데이터 */
+    data: AuctionItem[];
+    /** 활성화된 필터 */
+    activeFilters: ActiveFilters;
+    /** ID 기반 필터 */
+    filterIds?: FilterIds | null;
+    /** 검색 쿼리 */
+    searchQuery?: string;
+    /** 예산 범위 */
+    budgetRange?: BudgetRange | null;
+    /** 연식 범위 */
+    yearRange?: YearRange;
+    /** 마지막 정렬 필터 */
+    lastSortedFilter?: SortFilterType;
+    /** 이미지 클릭 콜백 */
+    onImageClick: (imageUrl: string) => void;
+    /** 상세보기 클릭 콜백 */
+    onDetailsClick: (row: AuctionItem) => void;
+}
 
 /**
  * 차량 갤러리 컴포넌트
  * 모바일/데스크톱에 따라 다른 카드 컴포넌트를 렌더링
  */
-const CarGallery = ({
+const CarGallery: React.FC<CarGalleryProps> = ({
     data,
     activeFilters,
     filterIds,
@@ -25,11 +50,11 @@ const CarGallery = ({
     const filteredData = useFilteredData(
         data,
         activeFilters,
-        searchQuery,
-        budgetRange,
-        yearRange,
-        lastSortedFilter,
-        filterIds
+        searchQuery ?? '',
+        budgetRange ?? null,
+        yearRange ?? null,
+        lastSortedFilter ?? null,
+        filterIds ?? null
     );
 
     // 렌더링할 카드 컴포넌트 결정
@@ -69,18 +94,6 @@ const CarGallery = ({
             </div>
         </div>
     );
-};
-
-CarGallery.propTypes = {
-    data: PropTypes.array.isRequired,
-    activeFilters: PropTypes.object.isRequired,
-    filterIds: PropTypes.object,
-    searchQuery: PropTypes.string,
-    budgetRange: PropTypes.object,
-    yearRange: PropTypes.array,
-    lastSortedFilter: PropTypes.string,
-    onImageClick: PropTypes.func.isRequired,
-    onDetailsClick: PropTypes.func.isRequired
 };
 
 export default CarGallery;

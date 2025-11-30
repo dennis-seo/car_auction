@@ -1,80 +1,98 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Range } from 'react-range';
 
-// 연식 슬라이더 설정
-const MIN_YEAR = 2000; // 2000년부터
-const MAX_YEAR = new Date().getFullYear(); // 현재년도까지
-const YEAR_STEP = 1; // 1년 단위
+// 연속형 슬라이더 설정 (단위: 만원)
+const MAX_BUDGET = 3000; // 3,000만원을 최댓값으로 취급 (최댓값은 '이상' 처리)
+const SLIDER_STEP = 10; // 10만원 단위로 부드럽게 이동
 
-// 연식 값을 한국어 라벨로 포맷
-const formatYearLabel = (value) => {
-    return `${value}년`;
+/** 예산 범위 타입 */
+export interface BudgetRange {
+    min: number;
+    max: number;
+}
+
+/** BudgetSlider Props */
+interface BudgetSliderProps {
+    /** 현재 예산 범위 (null이면 전체) */
+    budgetRange: BudgetRange | null;
+    /** 예산 범위 변경 콜백 */
+    onBudgetRangeChange: (range: BudgetRange | null) => void;
+}
+
+// 숫자 값을 한국어 금액 라벨로 포맷
+const formatBudgetLabel = (value: number): string => {
+    if (value === 0) return '0원';
+    const formatted = new Intl.NumberFormat('ko-KR').format(value);
+    return value === MAX_BUDGET ? `${formatted}만원이상` : `${formatted}만원`;
 };
 
 /**
- * 연식 범위 슬라이더 컴포넌트
+ * 예산 범위 슬라이더 컴포넌트 - React 네이티브 버전
  */
-const YearSlider = ({ yearRange, onYearRangeChange }) => {
-    // 슬라이더 값 상태 (실제 연식 값)
-    const [values, setValues] = useState([MIN_YEAR, MAX_YEAR]);
+const BudgetSlider: React.FC<BudgetSliderProps> = ({ budgetRange, onBudgetRangeChange }) => {
+    // 슬라이더 값 상태 (실제 금액 값, 단위: 만원)
+    const [values, setValues] = useState<number[]>([0, MAX_BUDGET]);
 
-    const updateYearText = useCallback((fromValue, toValue) => {
-        const fromLabel = formatYearLabel(fromValue);
-        const toLabel = formatYearLabel(toValue);
+    const updateBudgetText = useCallback((fromValue: number, toValue: number): string => {
+        const fromLabel = formatBudgetLabel(fromValue);
+        const toLabel = formatBudgetLabel(toValue);
 
-        if (fromValue === MIN_YEAR && toValue === MAX_YEAR) {
-            return '모든 연식의 차량';
-        } else if (fromValue === MIN_YEAR && toValue < MAX_YEAR) {
-            return `${toLabel} 이하 차량`;
-        } else if (fromValue > MIN_YEAR && toValue === MAX_YEAR) {
-            return `${fromLabel} 이상 차량`;
+        if (fromValue === 0 && toValue === MAX_BUDGET) {
+            return '최소~최대 예산 구간 모든 차량';
+        } else if (fromValue === 0 && toValue < MAX_BUDGET) {
+            return `${toLabel} 까지의 예산 차량`;
+        } else if (fromValue > 0 && toValue === MAX_BUDGET) {
+            return `${fromLabel} 이상의 예산 차량`;
         } else if (fromValue === toValue) {
-            return `${fromLabel} 차량만`;
+            return `${fromLabel} 차량만 보고 싶어요`;
         } else {
-            return `${fromLabel} ~ ${toLabel} 차량`;
+            return `${fromLabel} ~ ${toLabel} 구간 차량`;
         }
     }, []);
 
-    const updateYearFilter = useCallback((fromValue, toValue) => {
+    const updateBudgetFilter = useCallback((fromValue: number, toValue: number): void => {
         // 전체 범위인 경우 필터 해제
-        if (fromValue === MIN_YEAR && toValue === MAX_YEAR) {
-            onYearRangeChange(null);
+        if (fromValue === 0 && toValue === MAX_BUDGET) {
+            onBudgetRangeChange(null);
         } else {
-            onYearRangeChange([fromValue, toValue]);
+            onBudgetRangeChange({
+                min: fromValue,
+                max: toValue === MAX_BUDGET ? Infinity : toValue
+            });
         }
-    }, [onYearRangeChange]);
+    }, [onBudgetRangeChange]);
 
     // 타이핑/드래그 중 과도한 업데이트를 막고 0.5초 후에 적용
-    const debounceTimerRef = useRef(null);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const scheduleYearUpdate = useCallback((fromValue, toValue) => {
+    const scheduleBudgetUpdate = useCallback((fromValue: number, toValue: number): void => {
         // 이전 타이머가 있다면 취소
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
         }
         // 500ms 후 업데이트 적용
         debounceTimerRef.current = setTimeout(() => {
-            updateYearFilter(fromValue, toValue);
+            updateBudgetFilter(fromValue, toValue);
             debounceTimerRef.current = null;
         }, 500);
-    }, [updateYearFilter]);
+    }, [updateBudgetFilter]);
 
-    const handleChange = useCallback((newValues) => {
+    const handleChange = useCallback((newValues: number[]): void => {
         setValues(newValues);
-        scheduleYearUpdate(newValues[0], newValues[1]);
-    }, [scheduleYearUpdate]);
+        scheduleBudgetUpdate(newValues[0], newValues[1]);
+    }, [scheduleBudgetUpdate]);
 
-    // yearRange가 null로 리셋될 때 슬라이더도 리셋
+    // budgetRange가 null로 리셋될 때 슬라이더도 리셋
     useEffect(() => {
-        if (!yearRange) {
-            // 외부에서 연식 필터를 제거한 경우, 대기 중인 업데이트도 취소
+        if (!budgetRange) {
+            // 외부에서 예산 필터를 제거한 경우, 대기 중인 업데이트도 취소
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
                 debounceTimerRef.current = null;
             }
-            setValues([MIN_YEAR, MAX_YEAR]);
+            setValues([0, MAX_BUDGET]);
         }
-    }, [yearRange]);
+    }, [budgetRange]);
 
     // 언마운트 또는 의존성 변경 시 지연된 작업 정리
     useEffect(() => {
@@ -85,28 +103,28 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
         };
     }, []);
 
-    const currentText = useMemo(() => 
-        updateYearText(values[0], values[1]), 
-        [values, updateYearText]
+    const currentText = useMemo(() =>
+        updateBudgetText(values[0], values[1]),
+        [values, updateBudgetText]
     );
 
     return (
-        <div className="year-range-section">
-            <div className="year-title">
-                <span className="year-icon">🗓️</span>
-                <h4>원하는 연식이 있나요?</h4>
+        <div className="budget-range-section">
+            <div className="budget-title">
+                <span className="budget-icon">💰</span>
+                <h4>예산이 어떻게 되시나요?</h4>
             </div>
-            <div className="year-slider-container">
-                <div style={{ padding: '26px 0 14px' }}>
+            <div className="budget-slider-container">
+                <div className="budget-slider-wrapper" style={{ padding: '26px 0 14px' }}>
                     <Range
-                        step={YEAR_STEP}
-                        min={MIN_YEAR}
-                        max={MAX_YEAR}
+                        step={SLIDER_STEP}
+                        min={0}
+                        max={MAX_BUDGET}
                         values={values}
                         onChange={handleChange}
                         renderTrack={({ props, children }) => {
                             // key prop을 분리하되 직접 할당하여 리스트 렌더링 경고 방지
-                            const { key, ...trackProps } = props;
+                            const { key, ...trackProps } = props as typeof props & { key?: React.Key };
                             return (
                                 <div
                                     key={key}
@@ -126,8 +144,8 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
                                             height: '8px',
                                             background: 'linear-gradient(90deg, #4a90e2 0%, #1976d2 100%)',
                                             borderRadius: '4px',
-                                            left: `${((values[0] - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * 100}%`,
-                                            width: `${((values[1] - values[0]) / (MAX_YEAR - MIN_YEAR)) * 100}%`
+                                            left: `${(values[0] / MAX_BUDGET) * 100}%`,
+                                            width: `${((values[1] - values[0]) / MAX_BUDGET) * 100}%`
                                         }}
                                     />
                                     {children}
@@ -136,7 +154,7 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
                         }}
                         renderThumb={({ props, index }) => {
                             // key prop을 분리하되 직접 할당하여 리스트 렌더링 경고 방지
-                            const { key, ...thumbProps } = props;
+                            const { key, ...thumbProps } = props as typeof props & { key?: React.Key };
                             return (
                                 <div
                                     key={key}
@@ -156,7 +174,7 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
                                     }}
                                 >
                                     <div
-                                        className="year-thumb-tooltip"
+                                        className="budget-thumb-tooltip"
                                         style={{
                                             position: 'absolute',
                                             top: '-40px',
@@ -174,9 +192,9 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
                                             whiteSpace: 'nowrap'
                                         }}
                                     >
-                                        {formatYearLabel(values[index])}
+                                        {formatBudgetLabel(values[index])}
                                         <div
-                                            className="year-thumb-tooltip-arrow"
+                                            className="budget-thumb-tooltip-arrow"
                                             style={{
                                                 position: 'absolute',
                                                 left: '50%',
@@ -195,8 +213,8 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
                         }}
                     />
                 </div>
-                <div className="year-display">
-                    <span id="year-range-text">
+                <div className="budget-display">
+                    <span id="budget-range-text">
                         {currentText}
                     </span>
                 </div>
@@ -205,4 +223,4 @@ const YearSlider = ({ yearRange, onYearRangeChange }) => {
     );
 };
 
-export default YearSlider;
+export default BudgetSlider;
