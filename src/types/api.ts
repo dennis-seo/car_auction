@@ -129,6 +129,69 @@ export interface VehicleHistoryResponse {
 }
 
 // ============================================
+// 차량 시세 히스토리 집계 API (Aggregated)
+// ============================================
+
+/**
+ * 집계 API 개별 거래 데이터
+ */
+export interface AggregatedTrade {
+  /** 낙찰가 (만원) */
+  price: number | null;
+  /** 주행거리 (km) */
+  km: number | null;
+  /** 연식 */
+  year: number | null;
+  /** 평가등급 */
+  score: string | null;
+}
+
+/**
+ * 집계 API 날짜별 데이터
+ */
+export interface AggregatedDateData {
+  /** 경매 날짜 (YYYY-MM-DD) */
+  date: string;
+  /** 해당 날짜 원본 거래 건수 (샘플링 전) */
+  count: number;
+  /** 해당 날짜 평균가 */
+  avg_price: number;
+  /** 해당 날짜 최저가 */
+  min_price: number;
+  /** 해당 날짜 최고가 */
+  max_price: number;
+  /** 개별 거래 목록 (최대 max_per_date건) */
+  trades: AggregatedTrade[];
+}
+
+/**
+ * 집계 API 요약 통계
+ */
+export interface AggregatedSummary {
+  /** 반환된 전체 거래 건수 */
+  total_count: number;
+  /** 날짜 수 */
+  date_count: number;
+  /** 전체 최저가 (만원) */
+  min_price: number;
+  /** 전체 최고가 (만원) */
+  max_price: number;
+  /** 전체 평균가 (만원) */
+  avg_price: number;
+}
+
+/**
+ * 차량 시세 히스토리 집계 API 응답
+ * GET /api/vehicle-history/aggregated
+ */
+export interface VehicleHistoryAggregatedResponse {
+  /** 요약 통계 */
+  summary: AggregatedSummary;
+  /** 날짜별 데이터 (날짜 오름차순 정렬) */
+  data: AggregatedDateData[];
+}
+
+// ============================================
 // 필터 관련 타입
 // ============================================
 

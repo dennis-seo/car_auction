@@ -14,6 +14,12 @@ export type {
   DatesResponse,
   VehicleHistoryResponse,
 
+  // 집계 API 타입
+  AggregatedTrade,
+  AggregatedDateData,
+  AggregatedSummary,
+  VehicleHistoryAggregatedResponse,
+
   // 필터 관련
   ActiveFilters,
   FilterIds,

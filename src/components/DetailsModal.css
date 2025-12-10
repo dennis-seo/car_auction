@@ -404,16 +404,134 @@
     border-bottom: 1px solid #f1f5f9;
 }
 
+.history-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 .history-model-info {
     font-size: 14px;
     font-weight: 600;
     color: #1e293b;
 }
 
+.history-trim-info {
+    color: #64748b;
+    font-weight: 500;
+}
+
 .history-count {
-    font-size: 13px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.history-trim-toggle {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    font-size: 12px;
     font-weight: 500;
     color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.history-trim-toggle:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.history-trim-toggle.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+/* 통계 섹션 */
+.vehicle-history-stats {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.history-stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.history-stat-item .stat-label {
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+.history-stat-item .stat-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.history-stat-item .stat-value.low {
+    color: #16a34a;
+}
+
+.history-stat-item .stat-value.high {
+    color: #dc2626;
+}
+
+.history-stat-item .stat-value.lower {
+    color: #16a34a;
+}
+
+.history-stat-item .stat-value.higher {
+    color: #dc2626;
+}
+
+.history-stat-item .stat-value.similar {
+    color: #64748b;
+}
+
+.history-stat-item.current-compare {
+    background: #e0f2fe;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+/* 정렬 옵션 */
+.vehicle-history-sort {
+    display: flex;
+    gap: 6px;
+}
+
+.sort-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.sort-btn.active {
+    background: #f1f5f9;
+    border-color: #2563eb;
+    color: #2563eb;
 }
 
 /* 로딩 상태 */
@@ -556,6 +674,65 @@
     border-radius: 4px;
     font-size: 12px;
     font-weight: 600;
+}
+
+/* 등급별 색상 */
+.detail-value.score.score-a {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #16a34a;
+}
+
+.detail-value.score.score-b {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    color: #0284c7;
+}
+
+.detail-value.score.score-c {
+    background: linear-gradient(135deg, #fefce8 0%, #fef08a 100%);
+    color: #ca8a04;
+}
+
+.detail-value.score.score-d {
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    color: #ea580c;
+}
+
+.detail-value.score.score-ef {
+    background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+    color: #dc2626;
+}
+
+/* 가격 비교 배지 */
+.price-row {
+    flex-wrap: wrap;
+}
+
+.price-with-diff {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.price-diff {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.price-diff.lower {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.price-diff.higher {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.price-diff.similar {
+    background: #f1f5f9;
+    color: #64748b;
 }
 
 /* 페이지네이션 */
@@ -775,32 +952,80 @@
 
 /* 커스텀 툴팁 */
 .price-chart-tooltip {
-    background: rgba(30, 41, 59, 0.95);
-    backdrop-filter: blur(4px);
-    padding: 10px 12px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .tooltip-date {
-    font-size: 11px;
-    color: #94a3b8;
-    margin: 0 0 4px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.tooltip-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+    margin: 0 0 8px 0;
+}
+
+.tooltip-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tooltip-avg {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2563eb;
+    margin: 0;
+}
+
+.tooltip-min {
+    font-size: 12px;
+    font-weight: 500;
+    color: #16a34a;
+    margin: 0;
+}
+
+.tooltip-max {
+    font-size: 12px;
+    font-weight: 500;
+    color: #dc2626;
+    margin: 0;
 }
 
 .tooltip-price {
     font-size: 14px;
     font-weight: 700;
-    color: #ffffff;
+    color: #2563eb;
     margin: 0 0 4px 0;
 }
 
 .tooltip-km,
 .tooltip-year,
 .tooltip-score {
-    font-size: 11px;
-    color: #cbd5e1;
+    font-size: 12px;
+    color: #475569;
     margin: 0;
+}
+
+/* 데이터 부족 경고 */
+.price-chart-warning {
+    font-size: 12px;
+    color: #f59e0b;
+    background: #fef3c7;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-align: center;
 }
 
 /* 안내 문구 */

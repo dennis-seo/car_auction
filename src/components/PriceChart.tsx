@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-    LineChart,
+    ComposedChart,
     Line,
+    Scatter,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -9,8 +10,8 @@ import {
     ResponsiveContainer,
     ReferenceLine,
 } from 'recharts';
-import { useVehicleHistory } from '../hooks/useVehicleHistory';
-import type { AuctionItem } from '../types';
+import { useVehicleHistoryAggregated } from '../hooks/useVehicleHistoryAggregated';
+import type { AuctionItem, AggregatedDateData } from '../types';
 
 /** 차량 정보 타입 */
 interface VehicleInfo {
@@ -26,11 +27,13 @@ interface VehicleInfo {
 /** 차트 데이터 타입 */
 interface ChartDataItem {
     date: string;
-    price: number;
     displayDate: string;
-    km: number | null;
-    year: number | undefined;
-    score: string | undefined;
+    avgPrice: number;
+    count: number;          // 원본 거래 건수 (신뢰도 표시용)
+    minPrice: number;
+    maxPrice: number;
+    // 개별 거래 가격 (동적 키)
+    [key: string]: string | number | undefined;
 }
 
 /** 통계 타입 */
@@ -40,6 +43,7 @@ interface Stats {
     avg: number;
     current: number | null;
     count: number;
+    dateCount: number;
 }
 
 /** 툴팁 Props */
@@ -47,17 +51,16 @@ interface CustomTooltipProps {
     active?: boolean;
     payload?: Array<{ payload: ChartDataItem }>;
     label?: string;
+    formatPrice: (value: number) => string;
 }
 
 /** PriceChart Props */
 interface PriceChartProps {
-    /** 현재 차량 데이터 */
     vehicleData: AuctionItem | null;
-    /** 현재 경매 날짜 (YYYY-MM-DD 형식) */
     currentAuctionDate: string | null;
 }
 
-// 날짜 포맷팅
+// 날짜 포맷팅 (MM/DD)
 function formatShortDate(dateStr: string | undefined): string {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
@@ -67,27 +70,58 @@ function formatShortDate(dateStr: string | undefined): string {
     return dateStr;
 }
 
+// 신뢰도 계산 (0~1, count 기반)
+function getReliability(count: number, maxCount: number): number {
+    if (maxCount <= 1) return 1;
+    // 최소 0.3, 최대 1.0
+    return Math.max(0.3, Math.min(1, count / maxCount));
+}
+
+/**
+ * 커스텀 툴팁 컴포넌트
+ */
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, formatPrice }) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+            <div className="price-chart-tooltip">
+                <p className="tooltip-date">{data.date}</p>
+                <p className="tooltip-count">거래 {data.count}건</p>
+                <div className="tooltip-stats">
+                    <p className="tooltip-avg">평균: {formatPrice(data.avgPrice)}원</p>
+                    {data.count > 1 && (
+                        <>
+                            <p className="tooltip-min">최저: {formatPrice(data.minPrice)}원</p>
+                            <p className="tooltip-max">최고: {formatPrice(data.maxPrice)}원</p>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
 /**
  * 시세 변동 그래프 컴포넌트
- * 동일 모델의 과거 경매 가격 추이를 차트로 표시
+ * 집계 API를 사용하여 날짜별 분산된 시세 데이터 표시
  */
 const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate }) => {
     const [includeTrim, setIncludeTrim] = useState<boolean>(false);
 
     const {
-        history,
+        summary,
+        data: aggregatedData,
         loading,
         error,
-        pagination,
-        fetchHistory,
-        resetHistory,
-    } = useVehicleHistory();
+        fetchAggregatedHistory,
+        resetAggregatedHistory,
+    } = useVehicleHistoryAggregated();
 
     // 차량 정보 추출
     const vehicleInfo = useMemo((): VehicleInfo | null => {
         if (!vehicleData) return null;
 
-        // vehicleData에서 manufacturer, model 등의 필드는 직접 존재하지 않을 수 있음
         const data = vehicleData as AuctionItem & {
             manufacturer?: string;
             model?: string;
@@ -105,74 +139,84 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
         };
     }, [vehicleData]);
 
-    // 데이터 로드 (최대 50개)
+    // 데이터 로드
     useEffect(() => {
-        if (vehicleInfo?.modelId) {
-            fetchHistory({
+        if (vehicleInfo?.manufacturerId && vehicleInfo?.modelId) {
+            fetchAggregatedHistory({
                 manufacturerId: vehicleInfo.manufacturerId,
                 modelId: vehicleInfo.modelId,
                 trimId: includeTrim ? vehicleInfo.trimId : undefined,
-                limit: 50,
-                offset: 0,
+                minDates: 5,
+                maxPerDate: 10,
+                maxTotal: 100,
+                months: 12,
                 excludeDate: currentAuctionDate || undefined,
             });
         }
-        return () => resetHistory();
-    }, [vehicleInfo, currentAuctionDate, includeTrim, fetchHistory, resetHistory]);
 
-    // 차트 데이터 변환 (날짜순 정렬)
+        return () => resetAggregatedHistory();
+    }, [vehicleInfo, includeTrim, currentAuctionDate, fetchAggregatedHistory, resetAggregatedHistory]);
+
+    // API 데이터를 차트 데이터로 변환
     const chartData = useMemo((): ChartDataItem[] => {
-        if (!history || history.length === 0) return [];
+        if (!aggregatedData || aggregatedData.length === 0) return [];
 
-        return history
-            .filter(item => item.price && !isNaN(parseInt(String(item.price), 10)))
-            .map(item => ({
-                date: item.auction_date || '',
-                price: parseInt(String(item.price), 10),
-                displayDate: formatShortDate(item.auction_date),
-                km: item.km ? parseInt(String(item.km), 10) : null,
-                year: item.year,
-                score: item.score,
-            }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [history]);
+        return aggregatedData.map((item: AggregatedDateData) => {
+            const chartItem: ChartDataItem = {
+                date: item.date,
+                displayDate: formatShortDate(item.date),
+                avgPrice: Math.round(item.avg_price),
+                count: item.count,
+                minPrice: item.min_price,
+                maxPrice: item.max_price,
+            };
+
+            // 개별 거래 가격을 동적 키로 추가
+            item.trades.forEach((trade, idx) => {
+                if (trade.price !== null) {
+                    chartItem[`price${idx}`] = trade.price;
+                }
+            });
+
+            return chartItem;
+        });
+    }, [aggregatedData]);
+
+    // 날짜별 최대 거래 수 (Scatter 동적 생성용)
+    const maxTradesPerDate = useMemo(() => {
+        if (aggregatedData.length === 0) return 0;
+        return Math.max(...aggregatedData.map(d => d.trades.length));
+    }, [aggregatedData]);
+
+    // 최대 원본 거래 수 (신뢰도 계산용)
+    const maxOriginalCount = useMemo(() => {
+        if (chartData.length === 0) return 1;
+        return Math.max(...chartData.map(d => d.count));
+    }, [chartData]);
 
     // 통계 계산
     const stats = useMemo((): Stats | null => {
-        if (chartData.length === 0) return null;
+        if (!summary) return null;
 
-        const prices = chartData.map(d => d.price);
-        const min = Math.min(...prices);
-        const max = Math.max(...prices);
-        const avg = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
-        const current = vehicleInfo?.currentPrice ? parseInt(String(vehicleInfo.currentPrice), 10) : null;
+        const current = vehicleInfo?.currentPrice
+            ? parseInt(String(vehicleInfo.currentPrice), 10)
+            : null;
 
-        return { min, max, avg, current, count: prices.length };
-    }, [chartData, vehicleInfo?.currentPrice]);
+        return {
+            min: summary.min_price,
+            max: summary.max_price,
+            avg: Math.round(summary.avg_price),
+            current,
+            count: summary.total_count,
+            dateCount: summary.date_count,
+        };
+    }, [summary, vehicleInfo?.currentPrice]);
 
     // 가격 포맷팅
-    const formatPrice = (value: number): string => {
+    const formatPrice = useCallback((value: number): string => {
         return `${value.toLocaleString('ko-KR')}만`;
-    };
+    }, []);
 
-    // 커스텀 툴팁
-    const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
-        if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            return (
-                <div className="price-chart-tooltip">
-                    <p className="tooltip-date">{data.date}</p>
-                    <p className="tooltip-price">{formatPrice(data.price)}원</p>
-                    {data.km && <p className="tooltip-km">{data.km.toLocaleString()}km</p>}
-                    {data.year && <p className="tooltip-year">{data.year}년식</p>}
-                    {data.score && <p className="tooltip-score">등급: {data.score}</p>}
-                </div>
-            );
-        }
-        return null;
-    };
-
-    // 로딩 상태
     if (loading) {
         return (
             <div className="price-chart-loading">
@@ -182,7 +226,6 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
         );
     }
 
-    // 모델 ID가 없는 경우
     if (!vehicleInfo?.modelId) {
         return (
             <div className="price-chart-empty">
@@ -195,7 +238,6 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
         );
     }
 
-    // 에러 상태
     if (error) {
         return (
             <div className="price-chart-error">
@@ -204,7 +246,6 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
         );
     }
 
-    // 데이터 없음
     if (chartData.length === 0) {
         return (
             <div className="price-chart-empty">
@@ -217,6 +258,9 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
         );
     }
 
+    // 날짜가 3개 미만이면 추세 파악 불가 경고
+    const insufficientDates = (stats?.dateCount || 0) < 3;
+
     return (
         <div className="price-chart">
             {/* 헤더 */}
@@ -228,9 +272,10 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
                             <span className="chart-trim-info"> {vehicleInfo.trimName}</span>
                         )}
                     </span>
-                    <span className="chart-count">{pagination.total}건 기준</span>
+                    <span className="chart-count">
+                        {stats?.count}건 / {stats?.dateCount}일
+                    </span>
                 </div>
-                {/* 트림 포함 토글 */}
                 {vehicleInfo.trimId && (
                     <button
                         type="button"
@@ -242,6 +287,13 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
                     </button>
                 )}
             </div>
+
+            {/* 날짜 부족 경고 */}
+            {insufficientDates && (
+                <div className="price-chart-warning">
+                    데이터가 {stats?.dateCount}일치만 있어 추세 파악이 어려울 수 있습니다
+                </div>
+            )}
 
             {/* 통계 요약 */}
             {stats && (
@@ -270,7 +322,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
             {/* 차트 */}
             <div className="price-chart-container">
                 <ResponsiveContainer width="100%" height={200}>
-                    <LineChart
+                    <ComposedChart
                         data={chartData}
                         margin={{ top: 10, right: 35, left: 0, bottom: 0 }}
                     >
@@ -290,15 +342,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
                             domain={['dataMin - 50', 'dataMax + 50']}
                             width={45}
                         />
-                        <Tooltip content={<CustomTooltip />} />
-                        {stats?.avg && (
-                            <ReferenceLine
-                                y={stats.avg}
-                                stroke="#94a3b8"
-                                strokeDasharray="5 5"
-                                label={{ value: '평균', position: 'right', fontSize: 10, fill: '#94a3b8' }}
-                            />
-                        )}
+                        <Tooltip content={<CustomTooltip formatPrice={formatPrice} />} />
                         {stats?.current && (
                             <ReferenceLine
                                 y={stats.current}
@@ -307,21 +351,49 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
                                 label={{ value: '현재', position: 'right', fontSize: 10, fill: '#2563eb' }}
                             />
                         )}
+                        {/* 개별 거래 점 (Scatter) - 신뢰도에 따른 투명도 적용 */}
+                        {Array.from({ length: maxTradesPerDate }, (_, i) => (
+                            <Scatter
+                                key={`scatter-${i}`}
+                                dataKey={`price${i}`}
+                                fill="#93c5fd"
+                                shape={(props: unknown) => {
+                                    const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: ChartDataItem };
+                                    if (cx === undefined || cy === undefined || !payload) return <circle />;
+                                    const reliability = getReliability(payload.count, maxOriginalCount);
+                                    return (
+                                        <circle
+                                            cx={cx}
+                                            cy={cy}
+                                            r={4}
+                                            fill="#93c5fd"
+                                            fillOpacity={reliability}
+                                            stroke="#3b82f6"
+                                            strokeWidth={0.5}
+                                            strokeOpacity={reliability}
+                                        />
+                                    );
+                                }}
+                                legendType="none"
+                            />
+                        ))}
+                        {/* 평균가 선 (Line) */}
                         <Line
                             type="monotone"
-                            dataKey="price"
+                            dataKey="avgPrice"
                             stroke="#3b82f6"
                             strokeWidth={2}
-                            dot={{ fill: '#3b82f6', strokeWidth: 0, r: 3 }}
+                            dot={false}
                             activeDot={{ r: 5, fill: '#2563eb' }}
                         />
-                    </LineChart>
+                    </ComposedChart>
                 </ResponsiveContainer>
             </div>
 
             {/* 안내 문구 */}
             <p className="price-chart-note">
-                * 동일 {includeTrim ? '트림' : '모델'} 기준 최근 {stats?.count}건의 경매 데이터
+                * 동일 {includeTrim ? '트림' : '모델'} 기준 최근 12개월 시세
+                {maxOriginalCount > 3 && ' (점 투명도: 거래량 반영)'}
             </p>
         </div>
     );

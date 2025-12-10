@@ -14,6 +14,8 @@ export interface ApiEndpoints {
   auctionsByDate: (date: string) => string;
   /** 차량 검색 API (트림 기준 히스토리 조회용) */
   vehicles: string;
+  /** 차량 시세 히스토리 집계 API */
+  vehicleHistoryAggregated: string;
 }
 
 export const API_ENDPOINTS: ApiEndpoints = {
@@ -22,4 +24,6 @@ export const API_ENDPOINTS: ApiEndpoints = {
   auctionsByDate: (date: string): string => `${API_BASE_URL}/api/auction/${date}`,
   // 차량 검색 API (트림 기준 히스토리 조회용)
   vehicles: `${API_BASE_URL}/api/vehicles`,
+  // 차량 시세 히스토리 집계 API (날짜별 분산 데이터)
+  vehicleHistoryAggregated: `${API_BASE_URL}/api/vehicle-history/aggregated`,
 };
