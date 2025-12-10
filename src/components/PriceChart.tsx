@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     LineChart,
     Line,
@@ -72,6 +72,8 @@ function formatShortDate(dateStr: string | undefined): string {
  * 동일 모델의 과거 경매 가격 추이를 차트로 표시
  */
 const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate }) => {
+    const [includeTrim, setIncludeTrim] = useState<boolean>(false);
+
     const {
         history,
         loading,
@@ -109,13 +111,14 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
             fetchHistory({
                 manufacturerId: vehicleInfo.manufacturerId,
                 modelId: vehicleInfo.modelId,
+                trimId: includeTrim ? vehicleInfo.trimId : undefined,
                 limit: 50,
                 offset: 0,
                 excludeDate: currentAuctionDate || undefined,
             });
         }
         return () => resetHistory();
-    }, [vehicleInfo, currentAuctionDate, fetchHistory, resetHistory]);
+    }, [vehicleInfo, currentAuctionDate, includeTrim, fetchHistory, resetHistory]);
 
     // 차트 데이터 변환 (날짜순 정렬)
     const chartData = useMemo((): ChartDataItem[] => {
@@ -218,10 +221,26 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
         <div className="price-chart">
             {/* 헤더 */}
             <div className="price-chart-header">
-                <span className="chart-model-info">
-                    {vehicleInfo.manufacturerName} {vehicleInfo.modelName}
-                </span>
-                <span className="chart-count">{pagination.total}건 기준</span>
+                <div className="price-chart-header-left">
+                    <span className="chart-model-info">
+                        {vehicleInfo.manufacturerName} {vehicleInfo.modelName}
+                        {includeTrim && vehicleInfo.trimName && (
+                            <span className="chart-trim-info"> {vehicleInfo.trimName}</span>
+                        )}
+                    </span>
+                    <span className="chart-count">{pagination.total}건 기준</span>
+                </div>
+                {/* 트림 포함 토글 */}
+                {vehicleInfo.trimId && (
+                    <button
+                        type="button"
+                        className={`trim-toggle-btn ${includeTrim ? 'active' : ''}`}
+                        onClick={() => setIncludeTrim(!includeTrim)}
+                        title={includeTrim ? '모델 전체 시세 보기' : '동일 트림만 보기'}
+                    >
+                        트림 검색
+                    </button>
+                )}
             </div>
 
             {/* 통계 요약 */}
@@ -302,7 +321,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ vehicleData, currentAuctionDate
 
             {/* 안내 문구 */}
             <p className="price-chart-note">
-                * 동일 모델 기준 최근 {stats?.count}건의 경매 데이터
+                * 동일 {includeTrim ? '트림' : '모델'} 기준 최근 {stats?.count}건의 경매 데이터
             </p>
         </div>
     );

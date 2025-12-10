@@ -68,7 +68,7 @@ const DateSelector: React.FC<DateSelectorProps> = memo(({
 
     const displayLabel = selectedDate
         ? formatYYMMDDToLabel(selectedDate)
-        : (loading ? '날짜를 불러오는 중...' : '날짜를 선택하세요');
+        : (loading ? '' : '날짜를 선택하세요');
 
     // 에러 상태 처리
     if (!Array.isArray(availableDates)) {
@@ -119,17 +119,31 @@ const DateSelector: React.FC<DateSelectorProps> = memo(({
                 <button
                     id="date-selector"
                     type="button"
-                    className={`date-selector-input ${isOpen ? 'open' : ''} ${disabled || loading ? 'disabled' : ''}`}
+                    className={`date-selector-input ${isOpen ? 'open' : ''} ${disabled || loading ? 'disabled' : ''} ${loading ? 'loading' : ''}`}
                     onClick={toggleDropdown}
                     disabled={disabled || loading}
                     aria-haspopup="listbox"
                     aria-expanded={isOpen}
                     aria-describedby="date-selector-help"
                 >
-                    <span className="date-selector-value">{displayLabel}</span>
-                    <svg className="date-selector-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
+                    {loading ? (
+                        <span className="date-selector-loading">
+                            <span className="date-selector-spinner"></span>
+                            <span className="date-selector-loading-text">날짜 불러오는 중</span>
+                            <span className="date-selector-loading-dots">
+                                <span className="dot"></span>
+                                <span className="dot"></span>
+                                <span className="dot"></span>
+                            </span>
+                        </span>
+                    ) : (
+                        <>
+                            <span className="date-selector-value">{displayLabel}</span>
+                            <svg className="date-selector-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </>
+                    )}
                 </button>
                 {isOpen && (
                     <ul className="date-selector-options" role="listbox">

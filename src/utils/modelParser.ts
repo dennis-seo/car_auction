@@ -4,13 +4,75 @@
  * search_tree.json을 기반으로 manufacturer_id, model_id, trim_id 매칭
  */
 
+/** 트림 정보 인터페이스 */
+interface Trim {
+    id: string;
+    trim: string;
+}
+
+/** 모델 정보 인터페이스 */
+interface Model {
+    id: string;
+    model: string;
+    trims: Trim[];
+}
+
+/** 제조사 정보 인터페이스 */
+interface Manufacturer {
+    id: string;
+    label: string;
+    models: Model[];
+}
+
+/** 검색 트리 데이터 인터페이스 */
+interface SearchTreeData {
+    domestic: Manufacturer[];
+    import: Manufacturer[];
+}
+
+/** 모델 인덱스 엔트리 */
+interface ModelIndexEntry {
+    manufacturer: Manufacturer;
+    model: Model;
+}
+
+/** 파싱 결과 인터페이스 */
+export interface ParsedCarModel {
+    manufacturerId: string | null;
+    manufacturerName: string | null;
+    modelId: string | null;
+    modelName: string | null;
+    trimId: string | null;
+    trimName: string | null;
+}
+
+/** 제조사 추출 결과 */
+interface ManufacturerExtractResult {
+    label: string | null;
+    remaining: string;
+}
+
+/** 디버그 파싱 결과 */
+export interface ParsedCarModelDebug extends ParsedCarModel {
+    original: string;
+}
+
+/** 모델명 디버그 결과 */
+export interface ModelNameDebugResult {
+    original: string;
+    manufacturer: string | null;
+    remaining: string;
+    normalized: string;
+    modelName: string | null;
+}
+
 // 캐시
-let searchTreeData = null;
-let manufacturerIndex = null;
-let modelIndex = null;
+let searchTreeData: SearchTreeData | null = null;
+let manufacturerIndex: Record<string, Manufacturer> | null = null;
+let modelIndex: Record<string, ModelIndexEntry[]> | null = null;
 
 // 제조사 별명 → JSON label 매핑
-const MANUFACTURER_LABEL_MAP = {
+const MANUFACTURER_LABEL_MAP: Record<string, string> = {
     // 국산
     "현대": "현대",
     "기아": "기아",
@@ -61,7 +123,7 @@ const MANUFACTURER_LABEL_MAP = {
 };
 
 // 모델명 변형 매핑
-const MODEL_VARIATIONS = {
+const MODEL_VARIATIONS: Record<string, string> = {
     // 현대
     "그랜져": "그랜저",
     "싼타페": "싼타페",
@@ -105,7 +167,7 @@ const MODEL_VARIATIONS = {
 };
 
 // 접두어 패턴 (제거 대상)
-const PREFIX_PATTERNS = [
+const PREFIX_PATTERNS: RegExp[] = [
     /^더\s*뉴\s*/,
     /^더뉴\s*/,
     /^올\s*뉴\s*/,
@@ -124,13 +186,13 @@ const PREFIX_PATTERNS = [
 /**
  * search_tree.json 로드
  */
-async function loadSearchTree() {
+async function loadSearchTree(): Promise<SearchTreeData | null> {
     if (searchTreeData) return searchTreeData;
 
     try {
         const response = await fetch(`${process.env.PUBLIC_URL}/data/search_tree.json`);
         if (!response.ok) throw new Error('Failed to load search_tree.json');
-        searchTreeData = await response.json();
+        searchTreeData = await response.json() as SearchTreeData;
         buildIndexes();
         return searchTreeData;
     } catch (error) {
@@ -142,13 +204,13 @@ async function loadSearchTree() {
 /**
  * 인덱스 구축
  */
-function buildIndexes() {
+function buildIndexes(): void {
     if (!searchTreeData) return;
 
     manufacturerIndex = {};
     modelIndex = {};
 
-    for (const category of ['domestic', 'import']) {
+    for (const category of ['domestic', 'import'] as const) {
         const manufacturers = searchTreeData[category] || [];
         for (const mfr of manufacturers) {
             const label = mfr.label;
@@ -168,8 +230,8 @@ function buildIndexes() {
 /**
  * 제조사 추출
  */
-function extractManufacturer(title) {
-    if (!title) return { label: null, remaining: title };
+function extractManufacturer(title: string | null | undefined): ManufacturerExtractResult {
+    if (!title) return { label: null, remaining: title || '' };
 
     // [제조사] 형태
     const bracketMatch = title.match(/^\[([^\]]+)\]\s*/);
@@ -210,7 +272,7 @@ function extractManufacturer(title) {
 /**
  * 모델명 텍스트 정규화
  */
-function normalizeModelText(text) {
+function normalizeModelText(text: string | null | undefined): string {
     if (!text) return '';
 
     let result = text;
@@ -235,7 +297,7 @@ function normalizeModelText(text) {
 /**
  * 모델 찾기
  */
-function findModel(text, manufacturerLabel) {
+function findModel(text: string, manufacturerLabel: string | null): ModelIndexEntry | null {
     if (!modelIndex) return null;
 
     const normalized = normalizeModelText(text);
@@ -285,7 +347,7 @@ function findModel(text, manufacturerLabel) {
 /**
  * 트림 연식 추출
  */
-function extractTrimYear(trimName) {
+function extractTrimYear(trimName: string): string | null {
     const match = trimName.match(/\((\d{2})년~[^)]+\)/);
     return match ? match[1] : null;
 }
@@ -293,7 +355,7 @@ function extractTrimYear(trimName) {
 /**
  * 제목에서 연식 추출
  */
-function extractYearFromTitle(title) {
+function extractYearFromTitle(title: string): string | null {
     const match = title.match(/\((\d{2})년~[^)]+\)/);
     return match ? match[1] : null;
 }
@@ -301,11 +363,11 @@ function extractYearFromTitle(title) {
 /**
  * 최적 트림 찾기
  */
-function findBestTrim(trims, title) {
+function findBestTrim(trims: Trim[] | undefined, title: string): Trim | null {
     if (!trims || trims.length === 0) return null;
 
     const titleYear = extractYearFromTitle(title);
-    let bestTrim = null;
+    let bestTrim: Trim | null = null;
     let bestScore = -1;
 
     for (const trim of trims) {
@@ -343,19 +405,9 @@ function findBestTrim(trims, title) {
 /**
  * 차량 제목에서 manufacturer_id, model_id, trim_id 추출
  * 서버의 match_car_model() 함수와 동일한 로직
- *
- * @param {string} title - 차량 제목
- * @returns {Promise<{
- *   manufacturerId: string|null,
- *   manufacturerName: string|null,
- *   modelId: string|null,
- *   modelName: string|null,
- *   trimId: string|null,
- *   trimName: string|null
- * }>}
  */
-export async function parseCarModel(title) {
-    const result = {
+export async function parseCarModel(title: string | null | undefined): Promise<ParsedCarModel> {
+    const result: ParsedCarModel = {
         manufacturerId: null,
         manufacturerName: null,
         modelId: null,
@@ -374,7 +426,7 @@ export async function parseCarModel(title) {
     const { label: mfrLabel, remaining } = extractManufacturer(title);
 
     // 2. 제조사 정보 조회
-    if (mfrLabel && manufacturerIndex[mfrLabel]) {
+    if (mfrLabel && manufacturerIndex && manufacturerIndex[mfrLabel]) {
         const mfr = manufacturerIndex[mfrLabel];
         result.manufacturerId = mfr.id;
         result.manufacturerName = mfr.label;
@@ -411,7 +463,7 @@ export async function parseCarModel(title) {
 /**
  * 디버그용: 파싱 과정 전체 출력
  */
-export async function parseCarModelDebug(title) {
+export async function parseCarModelDebug(title: string): Promise<ParsedCarModelDebug> {
     const result = await parseCarModel(title);
 
     return {
@@ -420,8 +472,10 @@ export async function parseCarModelDebug(title) {
     };
 }
 
-// 이전 버전 호환용 (deprecated)
-export function parseModelName(title) {
+/**
+ * 이전 버전 호환용 (deprecated)
+ */
+export function parseModelName(title: string | null | undefined): string | null {
     if (!title) return null;
 
     const { remaining } = extractManufacturer(title);
@@ -439,7 +493,7 @@ export function parseModelName(title) {
     return MODEL_VARIATIONS[firstWord] || firstWord || null;
 }
 
-export function parseModelNameDebug(title) {
+export function parseModelNameDebug(title: string): ModelNameDebugResult {
     const { label: manufacturer, remaining } = extractManufacturer(title);
     const normalized = normalizeModelText(remaining || title);
     const modelName = parseModelName(title);

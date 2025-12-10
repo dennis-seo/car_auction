@@ -1117,6 +1117,83 @@ tbody tr:hover {
         width: 100%;
     }
 }
+
+/* 로딩 상태 스타일 */
+.date-selector-input.loading {
+    background: linear-gradient(135deg, #f8fafc 0%, #e8f4fd 100%) !important;
+    border-color: #90caf9 !important;
+    cursor: wait !important;
+}
+
+.date-selector-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* 스피너 애니메이션 */
+.date-selector-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid #e3f2fd;
+    border-top-color: #2196f3;
+    border-radius: 50%;
+    animation: date-spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes date-spinner-rotate {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.date-selector-loading-text {
+    color: #1976d2;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.3px;
+}
+
+/* 점 애니메이션 */
+.date-selector-loading-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.date-selector-loading-dots .dot {
+    width: 4px;
+    height: 4px;
+    background-color: #2196f3;
+    border-radius: 50%;
+    animation: date-dots-bounce 1.4s infinite ease-in-out both;
+}
+
+.date-selector-loading-dots .dot:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.date-selector-loading-dots .dot:nth-child(2) {
+    animation-delay: 0.16s;
+}
+
+.date-selector-loading-dots .dot:nth-child(3) {
+    animation-delay: 0.32s;
+}
+
+@keyframes date-dots-bounce {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.4;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 /* --- 날짜 선택 카드 스타일 끝 --- */
 
 /* --- 커스텀 셀렉트 드롭다운(제조사/모델/세부모델 공통) --- */

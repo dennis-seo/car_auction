@@ -71,6 +71,9 @@ export interface AuctionItem {
 
   /** 경매 일자 (YYYY-MM-DD 형식) */
   auction_date?: string;
+
+  /** 추가 필드 허용 (API 확장성) */
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 // ============================================

@@ -8,44 +8,75 @@ import { appState } from './utils/appState';
 import { API_ENDPOINTS } from './utils/apiConfig';
 import auctionManager from './utils/auctionManager';
 import { useAppContext } from './contexts/AppContext';
+import type { AuctionItem, ActiveFilters, FilterIds, BudgetRange, FilterAction } from './types';
 
 // Lazy Loading으로 코드 스플리팅
 const MainSearch = lazy(() => import('./components/MainSearch'));
-const ActiveFilters = lazy(() => import('./components/ActiveFilters'));
+const ActiveFiltersComponent = lazy(() => import('./components/ActiveFilters'));
 const CarGallery = lazy(() => import('./components/CarGallery'));
 const CarTable = lazy(() => import('./components/CarTable'));
 const ImageModal = lazy(() => import('./components/ImageModal'));
 const DetailsModal = lazy(() => import('./components/DetailsModal'));
 const ErrorBoundaryTest = lazy(() => import('./components/ErrorBoundaryTest'));
 
-function App() {
+/** 필터 라벨 정보 */
+interface FilterLabels {
+    manufacturer?: string | null;
+    model?: string | null;
+    trim?: string | null;
+}
+
+/** 연식 범위 타입 */
+type YearRange = [number, number] | null;
+
+/** 이미지 모달 상태 */
+interface ImageModalState {
+    show: boolean;
+    imageUrl: string;
+}
+
+/** 상세 모달 상태 */
+interface DetailsModalState {
+    show: boolean;
+    data: AuctionItem | null;
+}
+
+/** API 응답 인터페이스 */
+interface AuctionApiResponse {
+    date?: string;
+    source_filename?: string;
+    row_count?: number;
+    items?: AuctionItem[];
+}
+
+function App(): React.ReactElement {
     // Context에서 전역 상태 가져오기
     const { allData, setAllData, lastSortedFilter, setLastSortedFilter } = useAppContext();
 
     // 앱 상태 관리
-    const [selectedDate, setSelectedDate] = useState('');
-    const [availableDates, setAvailableDates] = useState([]);
-    const [activeFilters, setActiveFilters] = useState({
+    const [selectedDate, setSelectedDate] = useState<string>('');
+    const [availableDates, setAvailableDates] = useState<string[]>([]);
+    const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
         title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
     });
-    const [filterIds, setFilterIds] = useState({
+    const [filterIds, setFilterIds] = useState<FilterIds>({
         manufacturerId: null,
         modelId: null,
         trimId: null
     });
-    const [searchQuery, setSearchQuery] = useState('');
-    const [budgetRange, setBudgetRange] = useState(null);
-    const [yearRange, setYearRange] = useState(null);
-    const [message, setMessage] = useState('날짜를 선택하면 해당일의 경매 목록을 불러옵니다.');
-    const [showMainSearch, setShowMainSearch] = useState(false);
-    const [dateLoadError, setDateLoadError] = useState(false);
-    
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [budgetRange, setBudgetRange] = useState<BudgetRange | null>(null);
+    const [yearRange, setYearRange] = useState<YearRange>(null);
+    const [message, setMessage] = useState<string>('날짜를 선택하면 해당일의 경매 목록을 불러옵니다.');
+    const [showMainSearch, setShowMainSearch] = useState<boolean>(false);
+    const [dateLoadError, setDateLoadError] = useState<boolean>(false);
+
     // 모달 상태
-    const [imageModal, setImageModal] = useState({ show: false, imageUrl: '' });
-    const [detailsModal, setDetailsModal] = useState({ show: false, data: null });
+    const [imageModal, setImageModal] = useState<ImageModalState>({ show: false, imageUrl: '' });
+    const [detailsModal, setDetailsModal] = useState<DetailsModalState>({ show: false, data: null });
 
     // 초기화: 사용 가능한 날짜 목록 불러오기
-    const initializeDates = useCallback(async () => {
+    const initializeDates = useCallback(async (): Promise<void> => {
         try {
             const dates = await fetchAvailableDates();
             setAvailableDates(dates);
@@ -63,10 +94,10 @@ function App() {
     }, [initializeDates]);
 
     // 날짜 선택 시 데이터 로드
-    const handleDateChange = useCallback(async (date) => {
+    const handleDateChange = useCallback(async (date: string): Promise<void> => {
         console.log(`[App] 날짜 변경 요청: ${selectedDate} → ${date}`);
         setSelectedDate(date);
-        
+
         if (!date) {
             console.log('[App] 빈 날짜 선택, 데이터 초기화');
             setAllData([]);
@@ -79,17 +110,17 @@ function App() {
 
         setMessage(`'${date}'의 경매 데이터를 불러오는 중입니다...`);
         console.log(`[App] API 호출 시작: ${date}`);
-        
+
         // 새 데이터 로드 전 AuctionManager 초기화
         console.log('[App] 새 날짜 데이터 로드 전 AuctionManager 초기화');
         auctionManager.reset();
-        
+
         try {
             // JSON API에서 데이터 가져오기 - 강화된 캐시 방지
             const apiUrl = `${API_ENDPOINTS.auctionsByDate(date)}?_t=${Date.now()}`;
             console.log(`[App] API URL: ${apiUrl}`);
-            
-            const response = await fetch(apiUrl, { 
+
+            const response = await fetch(apiUrl, {
                 cache: 'no-cache',
                 headers: {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -97,14 +128,14 @@ function App() {
                     'Expires': '0'
                 }
             });
-            
+
             console.log(`[App] API 응답 상태: ${response.status} ${response.statusText}`);
-            
+
             if (!response.ok) {
                 throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
             }
-            
-            const jsonData = await response.json();
+
+            const jsonData: AuctionApiResponse = await response.json();
             console.log(`[App] API 응답 데이터:`, {
                 date: jsonData.date,
                 sourceFile: jsonData.source_filename,
@@ -112,7 +143,7 @@ function App() {
                 itemsLength: jsonData.items?.length,
                 sampleItem: jsonData.items?.[0]
             });
-            
+
             // JSON 응답에서 items 배열 추출
             if (jsonData && jsonData.items && Array.isArray(jsonData.items) && jsonData.items.length > 0) {
                 const newData = jsonData.items;
@@ -124,7 +155,7 @@ function App() {
 
                 console.log('[App] 필터 및 옵션 초기화 시작');
                 initializeFiltersAndOptions(newData);
-                
+
                 // 모든 필터 초기화
                 setActiveFilters({
                     title: [], model: [], submodel: [], price: [], km: [], fuel: [], auction_name: [], region: [], year: []
@@ -169,9 +200,9 @@ function App() {
     }, [selectedDate, setAllData]);
 
     // 필터 ID 업데이트 핸들러
-    const handleFilterIdChange = useCallback((newFilterIds, filterLabels = {}) => {
+    const handleFilterIdChange = useCallback((newFilterIds: FilterIds, filterLabels: FilterLabels = {}): void => {
         // API URL 빌드
-        const buildApiUrl = (ids) => {
+        const buildApiUrl = (ids: FilterIds | null): string | null => {
             if (!ids) return null;
             const params = new URLSearchParams();
             if (ids.manufacturerId) params.append('manufacturer_id', ids.manufacturerId);
@@ -190,36 +221,46 @@ function App() {
     }, []);
 
     // 필터 업데이트
-    const updateFilter = useCallback((filterType, value, action = 'toggle') => {
+    const updateFilter = useCallback((filterType: string, value: string | string[], action: FilterAction = 'toggle'): void => {
         setActiveFilters(prev => {
             const newFilters = { ...prev };
 
-            if (action === 'clear') {
-                newFilters[filterType] = [];
-            } else if (action === 'set') {
-                newFilters[filterType] = Array.isArray(value) ? [...value] : [value];
-            } else if (action === 'toggle') {
-                const currentValues = newFilters[filterType] || [];
-                if (currentValues.includes(value)) {
-                    newFilters[filterType] = currentValues.filter(v => v !== value);
-                } else {
-                    newFilters[filterType] = [...currentValues, value];
+            // year 필터는 별도 처리 (number[] 타입)
+            if (filterType === 'year') {
+                if (action === 'clear') {
+                    newFilters.year = [];
+                } else if (action === 'set' && Array.isArray(value)) {
+                    newFilters.year = value.map(v => typeof v === 'string' ? parseInt(v, 10) : v) as number[];
                 }
+                // 연식 필터가 설정되면 최근 정렬 우선순위를 'year'로 갱신
+                if (Array.isArray(newFilters.year) && newFilters.year.length === 2) {
+                    setLastSortedFilter('year');
+                }
+                return newFilters;
             }
 
-            // 연식 필터가 설정되면 최근 정렬 우선순위를 'year'로 갱신
-            if (filterType === 'year') {
-                const arr = newFilters.year;
-                if (Array.isArray(arr) && arr.length === 2) {
-                    setLastSortedFilter('year');
+            // string[] 필터 처리
+            type StringFilterKey = Exclude<keyof ActiveFilters, 'year'>;
+            const key = filterType as StringFilterKey;
+
+            if (action === 'clear') {
+                newFilters[key] = [];
+            } else if (action === 'set') {
+                newFilters[key] = Array.isArray(value) ? [...value] : [value];
+            } else if (action === 'toggle') {
+                const currentValues = newFilters[key] || [];
+                if (typeof value === 'string' && currentValues.includes(value)) {
+                    newFilters[key] = currentValues.filter(v => v !== value);
+                } else if (typeof value === 'string') {
+                    newFilters[key] = [...currentValues, value];
                 }
             }
 
             // 브랜드/모델/서브모델 필터 제거 시 filterIds도 초기화
             // 필터가 비워지면 해당 ID와 하위 계층 ID도 초기화
             if (filterType === 'title' && newFilters.title.length === 0) {
-                setFilterIds(prev => ({
-                    ...prev,
+                setFilterIds(prevIds => ({
+                    ...prevIds,
                     manufacturerId: null,
                     modelId: null,
                     trimId: null
@@ -228,16 +269,16 @@ function App() {
                 newFilters.model = [];
                 newFilters.submodel = [];
             } else if (filterType === 'model' && newFilters.model.length === 0) {
-                setFilterIds(prev => ({
-                    ...prev,
+                setFilterIds(prevIds => ({
+                    ...prevIds,
                     modelId: null,
                     trimId: null
                 }));
                 // 모델 제거 시 서브모델도 함께 초기화
                 newFilters.submodel = [];
             } else if (filterType === 'submodel' && newFilters.submodel.length === 0) {
-                setFilterIds(prev => ({
-                    ...prev,
+                setFilterIds(prevIds => ({
+                    ...prevIds,
                     trimId: null
                 }));
             }
@@ -247,24 +288,24 @@ function App() {
     }, [setLastSortedFilter]);
 
     // 모달 핸들러
-    const showImageModalHandler = useCallback((imageUrl) => {
+    const showImageModalHandler = useCallback((imageUrl: string): void => {
         setImageModal({ show: true, imageUrl });
     }, []);
 
-    const hideImageModalHandler = useCallback(() => {
+    const hideImageModalHandler = useCallback((): void => {
         setImageModal({ show: false, imageUrl: '' });
     }, []);
 
-    const showDetailsModalHandler = useCallback((rowData) => {
+    const showDetailsModalHandler = useCallback((rowData: AuctionItem): void => {
         setDetailsModal({ show: true, data: rowData });
     }, []);
 
-    const hideDetailsModalHandler = useCallback(() => {
+    const hideDetailsModalHandler = useCallback((): void => {
         setDetailsModal({ show: false, data: null });
     }, []);
 
     // 검색어 제거 핸들러
-    const handleRemoveSearchQuery = useCallback(() => {
+    const handleRemoveSearchQuery = useCallback((): void => {
         setSearchQuery('');
     }, []);
 
@@ -311,13 +352,13 @@ function App() {
                         onUpdateFilter={updateFilter}
                         onFilterIdChange={handleFilterIdChange}
                         onSearchQueryChange={setSearchQuery}
-                        onBudgetRangeChange={(range) => {
+                        onBudgetRangeChange={(range: BudgetRange | null) => {
                             setBudgetRange(range);
                             if (range) {
                                 setLastSortedFilter('budget');
                             }
                         }}
-                        onYearRangeChange={(range) => {
+                        onYearRangeChange={(range: YearRange) => {
                             setYearRange(range);
                             if (Array.isArray(range) && range.length === 2) {
                                 setLastSortedFilter('year');
@@ -326,7 +367,7 @@ function App() {
                     />
                 )}
 
-            <ActiveFilters
+            <ActiveFiltersComponent
                 activeFilters={activeFilters}
                 budgetRange={budgetRange}
                 searchQuery={searchQuery}
@@ -362,7 +403,7 @@ function App() {
                 showTable={!!selectedDate && allData.length > 0}
             />
 
-            <ImageModal 
+            <ImageModal
                 show={imageModal.show}
                 imageUrl={imageModal.imageUrl}
                 onClose={hideImageModalHandler}

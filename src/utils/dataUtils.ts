@@ -2,6 +2,7 @@ import { appState, parsedMileageRanges, parsedPriceRanges } from './appState';
 import { API_ENDPOINTS } from './apiConfig';
 import auctionManager from './auctionManager';
 import { FUEL_GROUPS, VEHICLE_TYPE_GROUPS, findGroupLabel } from './fuelGroups';
+import type { AuctionItem, ActiveFilters, FilterIds, BudgetRange, SortFilterType, SearchTree, BrandInfo } from '../types';
 
 // 상수 정의
 const DATE_FORMATS = {
@@ -12,35 +13,53 @@ const DATE_FORMATS = {
 
 const DEFAULT_YEAR_RANGE = { min: 2000, max: 2026 };
 
-const CACHE_CONFIG = { cache: 'no-cache' };
+const CACHE_CONFIG: RequestInit = { cache: 'no-cache' };
 
 // 공용 정적 데이터 경로 - 라우트가 바뀌어도 항상 앱 루트 기준으로 로드되도록 PUBLIC_URL을 사용
 const SEARCH_TREE_URL = `${process.env.PUBLIC_URL || ''}/data/search_tree.json`;
 
-// 제조사 목록 캐시
-let cachedBrandList = null;
-let cachedSearchTree = null;
+// 브랜드 목록 캐시 타입
+interface BrandListCache {
+    domestic: string[];
+    import: string[];
+}
+
+// 캐시
+let cachedBrandList: BrandListCache | null = null;
+let cachedSearchTree: SearchTree | null = null;
+
+// 초기화 결과 타입
+interface InitializeResult {
+    fuelTypes: string[];
+    vehicleTypes: string[];
+    carBrands: string[];
+    yearMin: number;
+    yearMax: number;
+}
+
+// 연식 범위 타입
+type YearRange = [number, number] | null;
 
 // 유틸리티 함수들
 /**
  * 안전한 정수 파싱 (NaN 대신 기본값 반환)
  */
-function safeParseInt(value, defaultValue = 0) {
-    const parsed = parseInt(value, 10);
+function safeParseInt(value: unknown, defaultValue: number = 0): number {
+    const parsed = parseInt(String(value), 10);
     return isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
  * 범위 체크 유틸리티
  */
-function isInRange(value, min, max) {
+function isInRange(value: number, min: number, max: number): boolean {
     return value >= min && (max === Infinity || value <= max);
 }
 
 /**
  * 날짜 문자열을 yymmdd로 정규화하는 헬퍼 함수
  */
-function normalizeDateString(dateStr) {
+function normalizeDateString(dateStr: string): string | null {
     const digits = dateStr.replace(/\D/g, '');
     if (DATE_FORMATS.YYMMDD.test(digits)) return digits;     // yymmdd
     if (DATE_FORMATS.YYYYMMDD.test(digits)) return digits.slice(2); // yyyymmdd -> yymmdd
@@ -50,18 +69,18 @@ function normalizeDateString(dateStr) {
 /**
  * 배열에서 유효한 날짜만 추출하고 정규화
  */
-function extractValidDates(dates) {
+function extractValidDates(dates: unknown[]): string[] {
     return dates
         .map(d => String(d ?? '').trim())
         .map(normalizeDateString)
-        .filter(Boolean);
+        .filter((d): d is string => d !== null);
 }
 
 /**
  * GitHub Pages에서 사용 가능한 날짜 목록을 가져옵니다.
- * @returns {Promise<Array>} 정규화된 날짜 배열
+ * @returns 정규화된 날짜 배열
  */
-export async function fetchAvailableDates() {
+export async function fetchAvailableDates(): Promise<string[]> {
     // 1) 우선순위: 제공된 API에서 날짜 목록 조회
     const primaryApi = API_ENDPOINTS.dates;
     try {
@@ -70,7 +89,7 @@ export async function fetchAvailableDates() {
         const payload = await res.json();
 
         // 다양한 응답 형태를 허용
-        let dates = Array.isArray(payload) ? payload
+        let dates: unknown[] | null = Array.isArray(payload) ? payload
             : Array.isArray(payload?.dates) ? payload.dates
             : Array.isArray(payload?.data) ? payload.data
             : null;
@@ -93,11 +112,12 @@ export async function fetchAvailableDates() {
 
 /**
  * 데이터 로드 후 필터링 옵션을 초기화합니다.
- * @param {Array} data - 초기화할 데이터
- * @returns {Object} 초기화된 필터 및 옵션 정보
+ * @param data - 초기화할 데이터
+ * @returns 초기화된 필터 및 옵션 정보
  */
-export function initializeFiltersAndOptions(data) {
+export function initializeFiltersAndOptions(data: AuctionItem[]): InitializeResult {
     // AuctionManager 초기화
+    // AuctionItem은 VehicleRow 필드를 포함하므로 호환됨
     auctionManager.initializeFromData(data);
 
     // 연료 타입 추출
@@ -106,13 +126,13 @@ export function initializeFiltersAndOptions(data) {
     // 차량 용도 타입 추출 (오토허브 경매장용)
     const vehicleTypes = [...new Set(data.map(row =>
         row.vehicleType || row.usage || row.type || row.purpose || row.fuel
-    ).filter(Boolean))].sort();
+    ).filter((v): v is string => Boolean(v)))].sort();
 
     // 차량 브랜드 추출 (제목에서 [브랜드] 패턴)
     const carBrands = [...new Set(data.map(row => {
         const match = row.title ? row.title.match(/\[(.*?)\]/) : null;
         return match ? match[1] : null;
-    }).filter(Boolean))].sort();
+    }).filter((v): v is string => Boolean(v)))].sort();
 
     // 연식 범위 계산
     const years = data
@@ -124,7 +144,7 @@ export function initializeFiltersAndOptions(data) {
 
     // appState는 여전히 업데이트 (하위 호환성)
     appState.fuelTypes = fuelTypes;
-    appState.vehicleTypes = vehicleTypes;
+    (appState as unknown as { vehicleTypes: string[] }).vehicleTypes = vehicleTypes;
     appState.carBrands = carBrands;
     appState.yearMin = yearMin;
     appState.yearMax = yearMax;
@@ -135,7 +155,6 @@ export function initializeFiltersAndOptions(data) {
         price: [],
         km: [],
         fuel: [],
-        vehicleType: [],
         auction_name: [],
         region: [],
         year: []
@@ -159,17 +178,17 @@ export function initializeFiltersAndOptions(data) {
 /**
  * 브랜드 목록을 로드합니다.
  */
-export async function loadBrandList() {
+export async function loadBrandList(): Promise<BrandListCache> {
     if (cachedBrandList) return cachedBrandList;
     try {
         // 앱이 서브 경로나 동적 라우트 하위에서 실행될 때 상대 경로가 깨지는 문제를 예방
         const res = await fetch(SEARCH_TREE_URL, CACHE_CONFIG);
         if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
-        
-        const domestic = json.domestic?.map(brand => brand.label) || [];
-        const import_brands = json.import?.map(brand => brand.label) || [];
-        
+
+        const domestic = json.domestic?.map((brand: BrandInfo) => brand.label) || [];
+        const import_brands = json.import?.map((brand: BrandInfo) => brand.label) || [];
+
         cachedBrandList = { domestic, import: import_brands };
         return cachedBrandList;
     } catch (err) {
@@ -182,7 +201,7 @@ export async function loadBrandList() {
 /**
  * 검색 트리를 로드합니다.
  */
-export async function loadSearchTree() {
+export async function loadSearchTree(): Promise<SearchTree> {
     if (cachedSearchTree) return cachedSearchTree;
     try {
         // 앱 라우트가 바뀌어도 올바른 정적 파일 경로를 보장
@@ -190,7 +209,7 @@ export async function loadSearchTree() {
         if (!res.ok) throw new Error(`search_tree.json fetch failed: ${res.status}`);
         const json = await res.json();
         cachedSearchTree = json;
-        return cachedSearchTree;
+        return cachedSearchTree!;
     } catch (err) {
         console.error('[검색 트리 로드 실패]', err);
         cachedSearchTree = { domestic: [], import: [] };
@@ -201,9 +220,9 @@ export async function loadSearchTree() {
 /**
  * 브랜드명으로 브랜드 정보를 찾습니다.
  */
-export function findBrandByLabel(brandLabel) {
-    if (!cachedSearchTree) return null;
-    
+export function findBrandByLabel(brandLabel: string): BrandInfo | undefined {
+    if (!cachedSearchTree) return undefined;
+
     const allBrands = [...(cachedSearchTree.domestic || []), ...(cachedSearchTree.import || [])];
     return allBrands.find(brand => brand.label === brandLabel);
 }
@@ -211,7 +230,7 @@ export function findBrandByLabel(brandLabel) {
 /**
  * yymmdd 형식으로 날짜 문자열을 정규화합니다.
  */
-export function normalizeDateToYYMMDD(input) {
+export function normalizeDateToYYMMDD(input: string | number | null | undefined): string {
     if (!input) return '';
     const str = String(input).trim();
     // 이미 yymmdd 형식
@@ -236,11 +255,11 @@ export function normalizeDateToYYMMDD(input) {
 /**
  * yymmdd를 표시용 'yy년 mm월 dd일'로 변환합니다.
  */
-export function formatYYMMDDToLabel(input) {
+export function formatYYMMDDToLabel(input: string | number | null | undefined): string {
     if (!input) return '';
     const str = String(input).trim();
     const digits = str.replace(/\D/g, '');
-    let yy, mm, dd;
+    let yy: string, mm: string, dd: string;
     if (digits.length === 6) {
         yy = digits.slice(0, 2);
         mm = digits.slice(2, 4);
@@ -257,14 +276,21 @@ export function formatYYMMDDToLabel(input) {
 
 /**
  * 데이터를 필터링합니다. (최적화 버전)
- * @param {Array} data - 필터링할 데이터
- * @param {Object} activeFilters - 활성화된 필터들
- * @param {string} searchQuery - 검색어
- * @param {Object} budgetRange - 예산 범위
- * @param {Array} yearRange - 연식 범위
- * @param {Object} filterIds - ID 기반 필터 (manufacturerId, modelId, trimId)
+ * @param data - 필터링할 데이터
+ * @param activeFilters - 활성화된 필터들
+ * @param searchQuery - 검색어
+ * @param budgetRange - 예산 범위
+ * @param yearRange - 연식 범위
+ * @param filterIds - ID 기반 필터 (manufacturerId, modelId, trimId)
  */
-export function filterData(data, activeFilters, searchQuery, budgetRange, yearRange, filterIds = null) {
+export function filterData(
+    data: AuctionItem[],
+    activeFilters: ActiveFilters,
+    searchQuery: string,
+    budgetRange: BudgetRange | null,
+    yearRange: YearRange,
+    filterIds: FilterIds | null = null
+): AuctionItem[] {
     // 사전 처리: 검색어 소문자 변환 (한 번만)
     const lowerQuery = (searchQuery || '').toLowerCase();
 
@@ -313,17 +339,17 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
 
     const result = data.filter(row => {
         // ID 기반 필터링 (가장 빠른 체크 - 정확한 매칭)
-        if (hasManufacturerId && String(row.manufacturer_id) !== String(filterIds.manufacturerId)) return false;
-        if (hasModelId && String(row.model_id) !== String(filterIds.modelId)) return false;
-        if (hasTrimId && String(row.trim_id) !== String(filterIds.trimId)) return false;
+        if (hasManufacturerId && String(row.manufacturer_id) !== String(filterIds!.manufacturerId)) return false;
+        if (hasModelId && String(row.model_id) !== String(filterIds!.modelId)) return false;
+        if (hasTrimId && String(row.trim_id) !== String(filterIds!.trimId)) return false;
         // 연식 필터 (가장 빠른 체크)
         if (hasYearFilter) {
             const year = safeParseInt(row.year);
-            if (year < yearArr[0] || year > yearArr[1]) return false;
+            if (year < (yearArr[0] as number) || year > (yearArr[1] as number)) return false;
         }
         if (hasYearRange) {
             const year = safeParseInt(row.year);
-            if (year < yearRange[0] || year > yearRange[1]) return false;
+            if (year < yearRange![0] || year > yearRange![1]) return false;
         }
 
         // 경매장/지역 필터 (단순 includes 체크)
@@ -342,7 +368,7 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
             const vehicleType = row.vehicleType || row.usage || row.type || row.purpose || row.fuel;
             // 직접 매칭 또는 그룹 라벨 매칭
             const vehicleGroupLabel = findGroupLabel(vehicleType, VEHICLE_TYPE_GROUPS);
-            const vehicleMatches = vehicleTypeArr.includes(vehicleType) || (vehicleGroupLabel && vehicleTypeArr.includes(vehicleGroupLabel));
+            const vehicleMatches = vehicleTypeArr.includes(vehicleType!) || (vehicleGroupLabel && vehicleTypeArr.includes(vehicleGroupLabel));
             if (!vehicleMatches) return false;
         }
 
@@ -369,7 +395,7 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
         if (kmArr.length > 0) {
             const kmValue = safeParseInt(row.km);
             const kmMatch = kmArr.some(rangeKey => {
-                const range = parsedMileageRanges[rangeKey];
+                const range = parsedMileageRanges[rangeKey as string];
                 return range && isInRange(kmValue, range.min, range.max);
             });
             if (!kmMatch) return false;
@@ -379,7 +405,7 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
         if (priceArr.length > 0) {
             const priceValue = safeParseInt(row.price);
             const priceMatch = priceArr.some(rangeKey => {
-                const range = parsedPriceRanges[rangeKey];
+                const range = parsedPriceRanges[rangeKey as string];
                 return range && isInRange(priceValue, range.min, range.max);
             });
             if (!priceMatch) return false;
@@ -388,7 +414,7 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
         // 예산 필터
         if (hasBudget) {
             const priceValue = safeParseInt(row.price);
-            if (!isInRange(priceValue, budgetRange.min, budgetRange.max)) return false;
+            if (!isInRange(priceValue, budgetRange!.min, budgetRange!.max)) return false;
         }
 
         return true;
@@ -409,7 +435,7 @@ export function filterData(data, activeFilters, searchQuery, budgetRange, yearRa
 /**
  * 가격 기준 오름차순 정렬
  */
-function sortByPriceAsc(list) {
+function sortByPriceAsc(list: AuctionItem[]): AuctionItem[] {
     return [...list].sort((a, b) => {
         const ap = safeParseInt(a.price);
         const bp = safeParseInt(b.price);
@@ -420,7 +446,7 @@ function sortByPriceAsc(list) {
 /**
  * 연식 기준 내림차순 정렬
  */
-function sortByYearDesc(list) {
+function sortByYearDesc(list: AuctionItem[]): AuctionItem[] {
     return [...list].sort((a, b) => {
         const ay = safeParseInt(a.year);
         const by = safeParseInt(b.year);
@@ -431,22 +457,28 @@ function sortByYearDesc(list) {
 /**
  * 주행거리 기준 오름차순 정렬
  */
-function sortByKmAsc(list) {
+function sortByKmAsc(list: AuctionItem[]): AuctionItem[] {
     return [...list].sort((a, b) => safeParseInt(a.km) - safeParseInt(b.km));
 }
 
 /**
  * 필터링된 데이터를 정렬합니다.
  */
-export function sortFilteredData(filteredData, activeFilters, budgetRange, yearRange, lastSortedFilter) {
+export function sortFilteredData(
+    filteredData: AuctionItem[],
+    activeFilters: ActiveFilters,
+    budgetRange: BudgetRange | null,
+    yearRange: YearRange,
+    lastSortedFilter: SortFilterType
+): AuctionItem[] {
     const priceArr = activeFilters.price || [];
     const kmArr = activeFilters.km || [];
-    
+
     // 새로운 요구사항: 예산/연식 정렬 우선
     const budgetActive = !!budgetRange;
     const yearActive = (Array.isArray(activeFilters.year) && activeFilters.year.length === 2)
         || (Array.isArray(yearRange) && yearRange.length === 2);
-    
+
     // 예산과 연식이 모두 활성화된 경우
     if (budgetActive && yearActive) {
         if (lastSortedFilter === 'budget') {
@@ -457,16 +489,16 @@ export function sortFilteredData(filteredData, activeFilters, budgetRange, yearR
         // 기본값: 예산 기준
         return sortByPriceAsc(filteredData);
     }
-    
+
     // 개별 필터 우선순위
     if (budgetActive) {
         return sortByPriceAsc(filteredData);
     }
-    
+
     if (yearActive) {
         return sortByYearDesc(filteredData);
     }
-    
+
     // 기존 테이블 헤더 정렬 로직 유지
     if (priceArr.length > 0 && kmArr.length > 0 && lastSortedFilter) {
         if (lastSortedFilter === 'price') {
@@ -479,6 +511,6 @@ export function sortFilteredData(filteredData, activeFilters, budgetRange, yearR
     } else if (kmArr.length > 0) {
         return sortByKmAsc(filteredData);
     }
-    
+
     return filteredData;
 }

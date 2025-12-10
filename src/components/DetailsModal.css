@@ -645,6 +645,20 @@
     align-items: center;
     padding-bottom: 12px;
     border-bottom: 1px solid #f1f5f9;
+    gap: 12px;
+}
+
+.price-chart-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.chart-trim-info {
+    color: #64748b;
+    font-weight: 500;
 }
 
 .chart-model-info {
@@ -659,13 +673,13 @@
     color: #64748b;
 }
 
-/* 로딩/에러/빈 상태 */
+/* 로딩/에러/빈 상태 - 완료 상태와 동일한 높이 유지 */
 .price-chart-loading {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
+    min-height: 360px;
     gap: 12px;
     color: #64748b;
 }
@@ -674,7 +688,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
+    min-height: 360px;
     color: #ef4444;
     font-size: 14px;
 }
@@ -684,7 +698,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
+    min-height: 360px;
     gap: 12px;
     color: #94a3b8;
     text-align: center;
@@ -795,6 +809,37 @@
     color: #94a3b8;
     text-align: center;
     margin: 0;
+}
+
+/* 트림 포함 토글 버튼 */
+.trim-toggle-btn {
+    padding: 6px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.trim-toggle-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.trim-toggle-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
+.trim-toggle-btn.active:hover {
+    background: #2563eb;
+    border-color: #2563eb;
 }
 
 /* 모바일 대응 - PriceChart */

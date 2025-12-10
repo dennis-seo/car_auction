@@ -81,8 +81,11 @@ export const useVehicleHistory = (): UseVehicleHistoryReturn => {
         setError(null);
 
         try {
+            // excludeDate가 있으면 1건 더 가져와서 제외 후에도 원하는 건수 유지
+            const fetchLimit = excludeDate ? limit + 1 : limit;
+
             const params = new URLSearchParams({
-                limit: String(limit),
+                limit: String(fetchLimit),
                 offset: String(offset),
             });
 
@@ -122,10 +125,12 @@ export const useVehicleHistory = (): UseVehicleHistoryReturn => {
 
             const data = await response.json();
 
-            // 현재 보고 있는 차량의 경매일 제외
+            // 현재 보고 있는 차량의 경매일 제외 후 원래 limit으로 제한
             let filteredItems: AuctionItem[] = data.items || [];
             if (excludeDate) {
-                filteredItems = filteredItems.filter((item: AuctionItem) => item.auction_date !== excludeDate);
+                filteredItems = filteredItems
+                    .filter((item: AuctionItem) => item.auction_date !== excludeDate)
+                    .slice(0, limit); // 원래 요청한 limit으로 제한
             }
 
             // 디버그 모드에서만 응답 결과 출력
